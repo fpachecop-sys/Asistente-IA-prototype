@@ -65,6 +65,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "get_current_time": params: {{}}
 - "answer_question": params: {{"text": "<respuesta concisa, cordial y directa>"}}
 - "send_whatsapp_message": params: {{"contact_name": "<nombre guardado>", "message": "<texto a enviar>"}}
+- "type_text": params: {{"text": "<texto a escribir>", "press_enter": <true/false>}}
 
 Reglas importantes:
 1. "spoken_response" debe ser SIEMPRE una frase corta, fluida y hablada en voz alta

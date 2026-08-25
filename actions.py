@@ -20,6 +20,8 @@ import pywhatkit
 import datetime as _dt
 import screen_capture
 import brain
+import keyboard
+import time
 
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
@@ -246,6 +248,7 @@ def execute_intent(intent: dict) -> str:
         "send_whatsapp_message": lambda: send_whatsapp_message(params.get("contact_name", ""), params.get("message", "")),
         "analyze_screen": lambda: analyze_screen(params.get("question", "Describe lo que ves en la pantalla")),
         "open_steam_game": lambda: open_steam_game(params.get("game_name", "")),
+        "type_text": lambda: type_text(params.get("text", ""), params.get("press_enter", False)),
     }
 
     handler = dispatch.get(action)
@@ -257,3 +260,15 @@ def analyze_screen(question: str = "Describe lo que ves en la pantalla"):
     """Toma una captura y se la manda a Gemini junto a una pregunta."""
     img_bytes = screen_capture.take_screenshot()
     return brain.ask_about_image(img_bytes, question)
+
+def type_text(text: str, press_enter: bool = False):
+    """Escribe un texto como si fueras tú tecleando."""
+    # Pausa pequeña para que sueltes la tecla de hablar antes de que él escriba
+    time.sleep(0.5) 
+    
+    keyboard.write(text, delay=0.02) # delay le da un efecto de escritura natural
+    
+    if press_enter:
+        keyboard.send("enter")
+        
+    return f"He escrito: {text}"
