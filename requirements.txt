@@ -1,0 +1,32 @@
+# === Interfaz gráfica ===
+customtkinter==5.2.2
+
+# === IA / Lógica (Gemini) ===
+google-genai==1.2.0
+
+# === Voz a texto (STT) ===
+SpeechRecognition==3.10.4
+PyAudio==0.2.14        # En Windows a veces requiere instalar vía pipwin si falla el build
+
+# === Texto a voz (TTS) ===
+# Motor principal: voces neuronales gratuitas de Microsoft Edge (mucho
+# más naturales que las voces nativas de Windows). Requiere internet.
+edge-tts==7.2.8
+pygame==2.6.1          # Reproduce el audio generado por edge-tts
+
+# Motor de respaldo 100% offline, se usa automáticamente si falla edge-tts
+pyttsx3==2.90
+
+# === Hotkey global ===
+keyboard==0.13.5
+
+# === Automatización del sistema ===
+pycaw==20240210        # Control de volumen en Windows (requiere comtypes)
+comtypes==1.4.5
+
+# === Spotify (búsqueda de canciones) ===
+spotipy==2.24.0
+
+# === Utilidades ===
+python-dotenv==1.0.1
+requests==2.32.3
