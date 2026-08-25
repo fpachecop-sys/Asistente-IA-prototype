@@ -58,11 +58,11 @@ TTS_USE_EDGE = True
 #   "es-ES-ElviraNeural"   -> mujer, español España
 #   "es-AR-TomasNeural"    -> hombre, español Argentina
 # Ejecuta `edge-tts --list-voices | findstr es-` (Windows) para ver más.
-TTS_EDGE_VOICE = "es-MX-DaliaNeural"
+TTS_EDGE_VOICE = "es-PE-CamilaNeural"
 
 # Ajustes de velocidad y volumen en formato de porcentaje relativo
 # que exige la librería edge-tts, ej: "+15%", "-10%", "+0%"
-TTS_EDGE_RATE = "+8%"
+TTS_EDGE_RATE = "+12%"
 TTS_EDGE_VOLUME = "+0%"
 
 # --- pyttsx3 (fallback 100% offline si Edge TTS falla, ej. sin internet) ---

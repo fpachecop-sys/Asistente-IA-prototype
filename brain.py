@@ -46,6 +46,7 @@ El JSON debe tener exactamente esta estructura:
 }}
 
 Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
+- "analyze_screen": params: {{"question": "<qué quiere saber sobre lo que ve en pantalla>"}} (Úsala SOLO si el usuario pide explícitamente ver/analizar/revisar su pantalla)
 - "open_website": params: {{"url": "<dominio o URL>"}}
 - "search_youtube": params: {{"query": "<término de búsqueda>"}}
 - "search_google": params: {{"query": "<término de búsqueda>"}}
@@ -76,6 +77,19 @@ Reglas importantes:
 6. No agregues texto ni explicaciones fuera de la estructura JSON.
 7. Si te preguntan por el clima, la fecha o la hora, USA EXCLUSIVAMENTE los datos
    del bloque [CONTEXTO ACTUAL], nunca los inventes.
+"""
+
+EJEMPLOS_DE_REFERENCIA = """
+Ejemplos (imita este formato EXACTO):
+
+Usuario: "reproduce bohemian rhapsody en spotify"
+{"action": "play_spotify_track", "params": {"query": "bohemian rhapsody"}, "spoken_response": "Reproduciendo Bohemian Rhapsody."}
+
+Usuario: "envíale un mensaje a franco diciendo que ya llegué"
+{"action": "send_whatsapp_message", "params": {"contact_name": "franco", "message": "Ya llegué"}, "spoken_response": "Enviando mensaje a Franco."}
+
+Usuario: "abre counter strike"
+{"action": "open_steam_game", "params": {"game_name": "counter strike 2"}, "spoken_response": "Abriendo Counter Strike 2."}
 """
 
 
@@ -111,7 +125,7 @@ def get_intent_from_text(user_text: str) -> dict:
     for turn in _chat_history[-MAX_HISTORY_TURNS:]:
         history_text += f"Usuario: {turn['user']}\n{config.ASSISTANT_NAME} (JSON previo): {turn['assistant']}\n"
     contexto = _build_context()
-    full_prompt = f"{SYSTEM_PROMPT}\n\n{contexto}\n{history_text}\nUsuario: {user_text}\n{config.ASSISTANT_NAME}:"
+    full_prompt = f"{SYSTEM_PROMPT}\n\n{EJEMPLOS_DE_REFERENCIA}\n\n{contexto}\n{history_text}\nUsuario: {user_text}\n{config.ASSISTANT_NAME}:"
     raw_text = ""
     try:
         response = client.models.generate_content(
@@ -148,6 +162,20 @@ def get_intent_from_text(user_text: str) -> dict:
             "spoken_response": "Tuve un problema procesando eso. Intenta de nuevo.",
             "_error": str(e),
         }
+
+
+def ask_about_image(image_bytes: bytes, question: str) -> str:
+    try:
+        response = client.models.generate_content(
+            model=config.GEMINI_MODEL_NAME,
+            contents=[
+                types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                question,
+            ],
+        )
+        return response.text or "No pude analizar la pantalla."
+    except Exception as e:
+        return f"Ocurrió un error analizando la pantalla: {e}"
 
 
 def reset_conversation():

@@ -32,3 +32,27 @@ def get_today_weather() -> str:
         return f"{temp_now}°C ahora, {desc}, con máxima de {tmax}°C y mínima de {tmin}°C"
     except Exception as e:
         return f"no disponible ({e})"
+
+# weather.py (agregar)
+def get_today_weather_dict() -> dict:
+    try:
+        r = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": LIMA_LAT, "longitude": LIMA_LON,
+                "current": "temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m",
+                "daily": "temperature_2m_max,temperature_2m_min",
+                "timezone": "America/Lima",
+            }, timeout=5,
+        )
+        data = r.json()
+        return {
+            "temp": round(data["current"]["temperature_2m"]),
+            "desc": WEATHER_CODES.get(data["current"]["weather_code"], "variable"),
+            "humidity": data["current"]["relative_humidity_2m"],
+            "wind": data["current"]["wind_speed_10m"],
+            "tmax": round(data["daily"]["temperature_2m_max"][0]),
+            "tmin": round(data["daily"]["temperature_2m_min"][0]),
+        }
+    except Exception:
+        return {"temp": "--", "desc": "no disponible", "humidity": "--", "wind": "--", "tmax": "--", "tmin": "--"}

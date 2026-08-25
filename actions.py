@@ -18,6 +18,8 @@ import webbrowser
 import urllib.parse
 import pywhatkit
 import datetime as _dt
+import screen_capture
+import brain
 
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
@@ -190,6 +192,23 @@ def open_app(app_name: str):
     except Exception as e:
         return f"No pude abrir {app_name}: {e}"
 
+# actions.py (agregar)
+def open_steam_game(game_name: str):
+    """Abre un juego de Steam por nombre. Requiere mapear appid manualmente
+    (Steam no tiene búsqueda por nombre vía URI sin su API)."""
+    key = game_name.lower().strip()
+    appid = STEAM_GAMES.get(key)
+    if not appid:
+        return f"No tengo el AppID de '{game_name}' guardado. Agrégalo a STEAM_GAMES en actions.py."
+    os.system(f"start steam://rungameid/{appid}")
+    return f"Abriendo {game_name} en Steam."
+
+STEAM_GAMES = {
+    # "nombre hablado": "appid"
+    "counter strike 2": "730",
+    "left 4 dead 2": "550",
+    "tom clancy's ghost recon": "460930"
+}
 
 # =========================================================
 #   DESPACHADOR PRINCIPAL DE INTENCIONES
@@ -229,3 +248,8 @@ def execute_intent(intent: dict) -> str:
     if handler is None:
         return "No reconocí esa acción."
     return handler()
+
+def analyze_screen(question: str = "Describe lo que ves en la pantalla"):
+    """Toma una captura y se la manda a Gemini junto a una pregunta."""
+    img_bytes = screen_capture.take_screenshot()
+    return brain.ask_about_image(img_bytes, question)

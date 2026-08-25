@@ -116,3 +116,22 @@ window.addEventListener("pywebviewready", async () => {
     console.error("No se pudo cargar el historial:", err);
   }
 });
+
+// app.js (agregar)
+async function refreshDashboardData() {
+  try {
+    const data = await window.pywebview.api.get_dashboard_data();
+    document.getElementById("cpu-value").textContent = data.stats.cpu + "%";
+    document.getElementById("ram-value").textContent = data.stats.ram_percent + "%";
+    document.getElementById("ram-detail").textContent =
+      `${data.stats.ram_used_gb} / ${data.stats.ram_total_gb} GB`;
+    document.getElementById("weather-temp").textContent = data.weather.temp + "°C";
+    document.getElementById("weather-desc").textContent = data.weather.desc;
+    document.getElementById("weather-detail").textContent =
+      `Máx ${data.weather.tmax}° · Mín ${data.weather.tmin}° · Humedad ${data.weather.humidity}%`;
+  } catch (err) {
+    console.error("Error actualizando dashboard:", err);
+  }
+}
+setInterval(refreshDashboardData, 15000); // cada 15s, no satures psutil/API
+refreshDashboardData();

@@ -9,7 +9,8 @@ import threading
 import time
 import webview
 import keyboard
-
+import system_stats
+import weather
 import config
 import voice
 import brain
@@ -42,6 +43,12 @@ class Bridge:
 
     def get_history(self):
         return app_state.conversation_history
+
+    def get_dashboard_data(self):
+        return {
+            "stats": system_stats.get_system_stats(),
+            "weather": weather.get_today_weather()
+        }
 
 
 def _restore_dashboard_from_orb():
