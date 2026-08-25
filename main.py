@@ -1,7 +1,13 @@
 # main.py
+"""
+Punto de entrada único. Un solo proceso:
+    - Hilo A (secundario): Tkinter -> la bolita (JarvisUI), oculta al inicio.
+    - Hilo principal: pywebview -> el dashboard.
+Ambos comparten `app_state` (historial, comandos) sin duplicar nada.
+"""
 import threading
-import sys
 import time
+import webview
 import keyboard
 
 import config
@@ -9,104 +15,152 @@ import voice
 import brain
 import actions
 from ui import JarvisUI
+from app_state import AppState
 
+app_state = AppState()
+_recorder = voice.PushToTalkRecorder()
 _is_holding_key = False
 _is_busy_processing = False
-_recorder = voice.PushToTalkRecorder()
+
+_orb_app = None       # instancia de JarvisUI, se crea en el hilo Tkinter
+_webview_window = None  # ventana del dashboard
+
+
+# =========================================================
+#   Puente Python <-> JS del dashboard
+# =========================================================
+class Bridge:
+    def minimize_to_orb(self):
+        """Llamado desde JS al hacer click en minimizar."""
+        if _webview_window:
+            _webview_window.hide()
+        app_state.show_orb()
+
+    def send_text_message(self, user_text: str):
+        """Permite escribir por teclado desde el dashboard en vez de solo voz."""
+        return _process_user_text(user_text)
+
+    def get_history(self):
+        return app_state.conversation_history
+
+
+def _restore_dashboard_from_orb():
+    """Llamado desde ui.py (hilo Tkinter) cuando se hace doble-click en la bolita."""
+    if _webview_window:
+        _webview_window.show()
+
+
+# =========================================================
+#   Lógica compartida de procesamiento (voz o texto)
+# =========================================================
+def _process_user_text(user_text: str) -> dict:
+    app_state.add_message("user", user_text)
+    app_state.set_orb_state("thinking")
+
+    intent = brain.get_intent_from_text(user_text)
+    action_result_text = actions.execute_intent(intent)
+    spoken_text = intent.get("spoken_response") or action_result_text
+
+    app_state.add_message("assistant", spoken_text)
+    app_state.set_orb_state("speaking")
+    voice.speak(spoken_text)
+    app_state.set_orb_state("idle")
+
+    return {"spoken_response": spoken_text}
+
+
+def _process_audio_thread():
+    global _is_busy_processing
+    _is_busy_processing = True
+    try:
+        app_state.set_orb_state("thinking")
+        audio_data = _recorder.stop_and_get_audio()
+        user_text = voice.transcribe_audio_data(audio_data)
+
+        if not user_text:
+            app_state.set_orb_state("idle")
+            return
+
+        print(f"[Usuario dijo]: {user_text}")
+        _process_user_text(user_text)
+    except Exception as e:
+        print(f"[ERROR en procesamiento]: {e}")
+    finally:
+        app_state.set_orb_state("idle")
+        _is_busy_processing = False
+
 
 def _recording_loop():
-    """Hilo secundario que captura fragmentos de micrófono mientras mantengas presionada la tecla."""
-    global _is_holding_key, _recorder
+    global _is_holding_key
     while _is_holding_key:
         _recorder.record_chunk()
         time.sleep(0.01)
 
-def _process_audio_thread(app: JarvisUI):
-    """Procesa el audio recopilado al soltar la tecla y llama a Gemini."""
-    global _is_busy_processing, _recorder
-    _is_busy_processing = True
 
-    try:
-        app.set_state("thinking")
-        audio_data = _recorder.stop_and_get_audio()
-        
-        user_text = voice.transcribe_audio_data(audio_data)
-
-        if not user_text:
-            app.set_state("idle")
-            _is_busy_processing = False
-            return
-
-        print(f"[Usuario dijo]: {user_text}")
-
-        # Consulta a Gemini
-        intent = brain.get_intent_from_text(user_text)
-        print(f"[Intención Gemini]: {intent}")
-
-        # Ejecución de la acción y respuesta por voz
-        action_result_text = actions.execute_intent(intent)
-        spoken_text = intent.get("spoken_response") or action_result_text
-
-        app.set_state("speaking")
-        voice.speak(spoken_text)
-
-    except Exception as e:
-        print(f"[ERROR en procesamiento]: {e}")
-    finally:
-        app.set_state("idle")
-        _is_busy_processing = False
-
-def register_push_to_talk(app: JarvisUI):
-    """Eventos de teclado: Down (empezar a grabar) y Up (soltar y enviar)."""
-    global _is_holding_key, _is_busy_processing, _recorder
-
+def register_push_to_talk():
+    global _is_holding_key, _is_busy_processing
     target_key = config.HOTKEY_ACTIVATE.lower()
 
     def on_key_event(event):
-        global _is_holding_key, _is_busy_processing, _recorder
-
+        global _is_holding_key, _is_busy_processing
         if event.name.lower() != target_key:
             return
 
-        # PRESIONAR LA TECLA (KEY DOWN)
         if event.event_type == keyboard.KEY_DOWN:
             if not _is_holding_key and not _is_busy_processing:
                 _is_holding_key = True
-                app.set_state("listening")  # El orbe empieza a brillar en celeste
+                app_state.set_orb_state("listening")
                 _recorder.start()
-                # Inicia la captura continua mientras la tecla siga abajo
                 threading.Thread(target=_recording_loop, daemon=True).start()
 
-        # SOLTAR LA TECLA (KEY UP)
         elif event.event_type == keyboard.KEY_UP:
             if _is_holding_key:
-                _is_holding_key = False  # Detiene la grabación
-                # Inicia el procesamiento en segundo plano con el audio capturado
-                threading.Thread(target=_process_audio_thread, args=(app,), daemon=True).start()
+                _is_holding_key = False
+                threading.Thread(target=_process_audio_thread, daemon=True).start()
 
     def on_quit():
         print("Cerrando JARVIS...")
-        app.after(0, app._close)
+        if _webview_window:
+            _webview_window.destroy()
+        if _orb_app:
+            _orb_app.after(0, _orb_app.destroy)
 
     keyboard.hook(on_key_event)
     keyboard.add_hotkey(config.HOTKEY_QUIT, on_quit)
-
     print(f"✅ JARVIS listo. Mantén presionada [{config.HOTKEY_ACTIVATE.upper()}] para hablar.")
-    print(f"   Presiona [{config.HOTKEY_QUIT.upper()}] para salir.")
-
     keyboard.wait()
+
+
+# =========================================================
+#   Hilo de la bolita (Tkinter)
+# =========================================================
+def start_orb_thread():
+    global _orb_app
+    _orb_app = JarvisUI(app_state, on_restore_dashboard=_restore_dashboard_from_orb, start_hidden=True)
+    _orb_app.mainloop()
+
 
 def main():
     if not config.GEMINI_API_KEY:
         print("❌ ERROR: No se encontró GEMINI_API_KEY en el archivo .env")
-        sys.exit(1)
+        return
 
-    app = JarvisUI(on_close_callback=lambda: keyboard.unhook_all())
+    global _webview_window
 
-    # Listener de teclado en segundo plano
-    threading.Thread(target=register_push_to_talk, args=(app,), daemon=True).start()
+    # Hilo 1: la bolita (Tkinter), oculta hasta que se pida
+    threading.Thread(target=start_orb_thread, daemon=True).start()
 
-    app.mainloop()
+    # Hilo 2: hotkey global en segundo plano
+    threading.Thread(target=register_push_to_talk, daemon=True).start()
+
+    # Hilo principal: pywebview (dashboard)
+    bridge = Bridge()
+    DASHBOARD_HTML = "ui_dashboard/index.html"
+    _webview_window = webview.create_window(
+        "JARVIS", DASHBOARD_HTML, width=1200, height=800, js_api=bridge,
+    )
+    webview.start()
+
 
 if __name__ == "__main__":
     main()

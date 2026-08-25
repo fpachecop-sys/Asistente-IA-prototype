@@ -6,27 +6,33 @@ google-genai==1.2.0
 
 # === Voz a texto (STT) ===
 SpeechRecognition==3.10.4
-PyAudio==0.2.14        # En Windows a veces requiere instalar vía pipwin si falla el build
+PyAudio==0.2.14
 
 # === Texto a voz (TTS) ===
-# Motor principal: voces neuronales gratuitas de Microsoft Edge (mucho
-# más naturales que las voces nativas de Windows). Requiere internet.
 edge-tts==7.2.8
-pygame==2.6.1          # Reproduce el audio generado por edge-tts
-
-# Motor de respaldo 100% offline, se usa automáticamente si falla edge-tts
+pygame==2.6.1
 pyttsx3==2.90
 
 # === Hotkey global ===
 keyboard==0.13.5
 
 # === Automatización del sistema ===
-pycaw==20240210        # Control de volumen en Windows (requiere comtypes)
+pycaw==20240210
 comtypes==1.4.5
 
-# === Spotify (búsqueda de canciones) ===
+# === Spotify ===
 spotipy==2.24.0
+
+# === WhatsApp ===
+pywhatkit==5.4
+
+# === Google (Gmail + Calendar) ===
+google-auth==2.35.0
+google-auth-oauthlib==1.2.1
+google-api-python-client==2.149.0
 
 # === Utilidades ===
 python-dotenv==1.0.1
 requests==2.32.3
+
+pywebview==5.3.2

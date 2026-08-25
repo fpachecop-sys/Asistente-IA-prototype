@@ -14,7 +14,8 @@ texto de la respuesta directa.
 import json
 import re
 from google import genai
-
+import datetime
+import weather
 import config
 
 # Inicializamos el cliente oficial de Gemini
@@ -59,6 +60,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "get_current_date": params: {{}}
 - "get_current_time": params: {{}}
 - "answer_question": params: {{"text": "<respuesta concisa, cordial y directa>"}}
+- "send_whatsapp_message": params: {"contact_name": "<nombre guardado>", "message": "<texto a enviar>"}
 
 Reglas importantes:
 1. "spoken_response" debe ser SIEMPRE una frase corta, fluida y hablada en voz alta
@@ -70,6 +72,8 @@ Reglas importantes:
 5. Si pide reproducir, poner, o escuchar una canción o artista específico, usa "play_spotify_track"
    (NO uses "open_app" para esto, ya que eso solo abre la app vacía sin reproducir nada).
 6. No agregues texto ni explicaciones fuera de la estructura JSON.
+7. Si te preguntan por el clima, la fecha o la hora, USA EXCLUSIVAMENTE los datos
+   del bloque [CONTEXTO ACTUAL], nunca los inventes.
 """
 
 
@@ -81,6 +85,16 @@ def _clean_json_response(raw_text: str) -> str:
     cleaned = re.sub(r"```$", "", cleaned).strip()
     return cleaned
 
+def _build_context() -> str:
+    now = datetime.datetime.now()
+    fecha = now.strftime("%A %d de %B, %Y")
+    hora = now.strftime("%H:%M")
+    clima = weather.get_today_weather()
+    return (
+        f"[CONTEXTO ACTUAL]\n"
+        f"Fecha: {fecha} | Hora: {hora}\n"
+        f"Clima en Lima, Perú: {clima}\n"
+    )
 
 def get_intent_from_text(user_text: str) -> dict:
     """
@@ -92,9 +106,8 @@ def get_intent_from_text(user_text: str) -> dict:
     history_text = ""
     for turn in _chat_history[-MAX_HISTORY_TURNS:]:
         history_text += f"Usuario: {turn['user']}\n{config.ASSISTANT_NAME} (JSON previo): {turn['assistant']}\n"
-
-    full_prompt = f"{SYSTEM_PROMPT}\n\n{history_text}\nUsuario: {user_text}\n{config.ASSISTANT_NAME}:"
-
+    contexto = _build_context()
+    full_prompt = f"{SYSTEM_PROMPT}\n\n{contexto}\n{history_text}\nUsuario: {user_text}\n{config.ASSISTANT_NAME}:"
     raw_text = ""
     try:
         response = client.models.generate_content(

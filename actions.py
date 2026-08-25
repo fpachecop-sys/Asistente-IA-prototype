@@ -16,6 +16,8 @@ import platform
 import subprocess
 import webbrowser
 import urllib.parse
+import pywhatkit
+import datetime as _dt
 
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
@@ -60,6 +62,29 @@ def set_volume(percent: int):
             keyboard.send("volume up")
         return "Volumen ajustado (modo compatibilidad)."
 
+def send_whatsapp_message(contact_name: str, message: str):
+    """Requiere que el número esté guardado; pywhatkit busca por nombre en contactos exportados,
+    así que lo más confiable es mapear nombre -> número en un diccionario propio."""
+    number = CONTACTS.get(contact_name.lower())
+    if not number:
+        return f"No tengo el número de {contact_name} guardado."
+    now = _dt.datetime.now()
+    send_time_h = now.hour
+    send_time_m = now.minute + 1  # pywhatkit necesita ~15s de margen
+    try:
+        pywhatkit.sendwhatmsg(number, message, send_time_h, send_time_m, wait_time=15, tab_close=True)
+        return f"Enviando mensaje a {contact_name} por WhatsApp."
+    except Exception as e:
+        return f"No pude enviar el mensaje: {e}"
+
+CONTACTS = {
+    "franco": "+51 978 475 665",
+    "Jaime": "+51 946 838 982",
+    "Mamá": "+51 971 482 726",
+    "Fabián": "+51 963 183 479",
+    "Primita": "+51 916 799 846"
+    # agrega tus contactos aquí
+}
 
 def volume_up():
     keyboard.send("volume up")
@@ -197,6 +222,7 @@ def execute_intent(intent: dict) -> str:
         "open_app": lambda: open_app(params.get("app_name", "")),
         "play_spotify_track": lambda: spotify_control.search_and_play(params.get("query", "")),
         "answer_question": lambda: params.get("text", ""),
+        "send_whatsapp_message": lambda: send_whatsapp_message(params.get("contact_name", ""), params.get("message", "")),
     }
 
     handler = dispatch.get(action)
