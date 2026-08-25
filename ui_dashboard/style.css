@@ -119,6 +119,10 @@ body {
   flex-direction: column;
   backdrop-filter: blur(10px);
   position: relative;
+  
+  /* 👇 Agrega estas dos líneas mágicas 👇 */
+  overflow: hidden;
+  min-height: 0; 
 }
 
 /* Decoraciones de esquina HUD */
