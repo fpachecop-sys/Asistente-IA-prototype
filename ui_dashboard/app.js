@@ -110,15 +110,16 @@ document.getElementById("btn-minimize").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------
-// Telemetría y Clima
+// Telemetría, Clima y Pendientes
 // ---------------------------------------------------------
 async function refreshDashboardData() {
   if (!window.pywebview || !window.pywebview.api) return;
 
   try {
+    // Pedimos los datos principales
     const data = await window.pywebview.api.get_dashboard_data();
     
-    // Hardware Stats
+    // 1. Hardware Stats
     if (data.stats) {
       const cpu = data.stats.cpu ?? 0;
       const ramPercent = data.stats.ram_percent ?? 0;
@@ -133,9 +134,9 @@ async function refreshDashboardData() {
         document.getElementById("ram-detail").textContent =
           `${data.stats.ram_used_gb} / ${data.stats.ram_total_gb} GB`;
       }
-    }
+    } // <-- Aquí cerramos correctamente el bloque de Stats
 
-    // Clima
+    // 2. Clima
     if (data.weather) {
       const temp = data.weather.temp !== undefined ? `${data.weather.temp}°C` : "--°C";
       document.getElementById("weather-temp").textContent = temp;
@@ -143,8 +144,32 @@ async function refreshDashboardData() {
       document.getElementById("weather-detail").textContent =
         `MÁX ${data.weather.tmax}° · MÍN ${data.weather.tmin}° · HUM ${data.weather.humidity}%`;
     }
+
   } catch (err) {
-    console.error("Error al actualizar telemetría:", err);
+    console.error("Error al actualizar telemetría/clima:", err);
+  }
+
+  // 3. Pendientes (Envuelto en su propio try-catch para no romper el resto)
+  try {
+    const reminders = await window.pywebview.api.get_reminders();
+    const container = document.getElementById("reminders-container");
+    
+    if (container) {
+      container.innerHTML = ""; // Limpiar antes de actualizar
+      
+      if (!reminders || reminders.length === 0) {
+        container.innerHTML = '<span class="stat-row-sub">No hay pendientes programados.</span>';
+      } else {
+        reminders.forEach(r => {
+          const block = document.createElement("div");
+          block.className = "quick-btn"; 
+          block.innerHTML = `<strong class="neon-text" style="margin-right:8px;">${r.time}</strong> ${r.task}`;
+          container.appendChild(block);
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Error cargando pendientes. Revisa que get_reminders exista en bridge.py", err);
   }
 }
 

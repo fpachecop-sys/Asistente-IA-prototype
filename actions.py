@@ -22,6 +22,7 @@ import screen_capture
 import brain
 import keyboard
 import time
+import uuid
 
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
@@ -249,6 +250,9 @@ def execute_intent(intent: dict) -> str:
         "analyze_screen": lambda: analyze_screen(params.get("question", "Describe lo que ves en la pantalla")),
         "open_steam_game": lambda: open_steam_game(params.get("game_name", "")),
         "type_text": lambda: type_text(params.get("text", ""), params.get("press_enter", False)),
+        "remember_fact": lambda: remember_fact(params.get("text", "")),
+        "set_reminder": lambda: set_reminder(params.get("time", ""), params.get("task", "")),
+        "get_reminders": lambda: get_all_reminders(),
     }
 
     handler = dispatch.get(action)
@@ -264,7 +268,7 @@ def analyze_screen(question: str = "Describe lo que ves en la pantalla"):
 def type_text(text: str, press_enter: bool = False):
     """Escribe un texto como si fueras tú tecleando."""
     # Pausa pequeña para que sueltes la tecla de hablar antes de que él escriba
-    time.sleep(0.5) 
+    time.sleep(2.5) 
     
     keyboard.write(text, delay=0.02) # delay le da un efecto de escritura natural
     
@@ -272,3 +276,81 @@ def type_text(text: str, press_enter: bool = False):
         keyboard.send("enter")
         
     return f"He escrito: {text}"
+
+def remember_fact(text: str):
+    """Guarda un dato directamente en la tabla MemoryLogs de SQL Server."""
+    import __main__
+    
+    if hasattr(__main__, "app_state"):
+        try:
+            with __main__.app_state._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO MemoryLogs (LogEntry) VALUES (?)",
+                    (text,)
+                )
+                conn.commit()
+            return "Anotado correctamente en tu bitácora de memoria SQL."
+        except Exception as e:
+            return f"No pude guardar la nota en la base de datos: {e}"
+            
+    return "Error: No encontré la conexión al cerebro principal."
+
+
+def set_reminder(time_str: str, task: str):
+    """Guarda una alarma en SQL Server y sincroniza la RAM para la interfaz."""
+    import __main__
+    import uuid
+    
+    time_str = time_str.replace(".", ":").zfill(5) 
+    rem_id = str(uuid.uuid4())[:8]
+    
+    if hasattr(__main__, "app_state"):
+        try:
+            # 1. Insertamos en la Base de Datos
+            with __main__.app_state._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO Reminders (Id, TimeStr, TaskDescription, IsActive) VALUES (?, ?, ?, 1)",
+                    (rem_id, time_str, task)
+                )
+                conn.commit()
+                
+            # 2. Sincronizamos la RAM para que el frontend lo dibuje al instante
+            nuevo_pendiente = {
+                "id": rem_id,
+                "time": time_str,
+                "task": task
+            }
+            __main__.app_state.reminders.append(nuevo_pendiente)
+            
+            return f"Bloque de memoria creado para las {time_str}."
+        except Exception as e:
+            return f"Hubo un error guardando el pendiente en SQL: {e}"
+            
+    return "Error: No se encontró el banco de memoria principal."
+
+
+def get_all_reminders():
+    """Lee los pendientes directamente desde SQL Server."""
+    import __main__
+    
+    if hasattr(__main__, "app_state"):
+        try:
+            with __main__.app_state._get_connection() as conn:
+                cursor = conn.cursor()
+                # Solo traemos los que están activos (IsActive = 1)
+                cursor.execute("SELECT TimeStr, TaskDescription FROM Reminders WHERE IsActive = 1 ORDER BY TimeStr ASC")
+                rows = cursor.fetchall()
+                
+                if not rows:
+                    return "Actualmente no tienes pendientes programados."
+                
+                texto = "Estos son los pendientes programados:\n"
+                for row in rows:
+                    texto += f"- A las {row[0]}: {row[1]}\n"
+                return texto
+        except Exception as e:
+            return f"Error leyendo la base de datos: {e}"
+            
+    return "Error de conexión con la base de datos."

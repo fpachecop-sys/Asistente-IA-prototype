@@ -15,6 +15,7 @@ import config
 import voice
 import brain
 import actions
+import datetime
 from ui import JarvisUI
 from app_state import AppState
 
@@ -49,6 +50,8 @@ class Bridge:
             "stats": system_stats.get_system_stats(),
             "weather": weather.get_today_weather_dict()
         }
+    def get_reminders(self):
+        return app_state.reminders
 
 
 def _restore_dashboard_from_orb():
@@ -172,6 +175,9 @@ def main():
     # Hilo 2: hotkey global en segundo plano
     threading.Thread(target=register_push_to_talk, daemon=True).start()
 
+    # Hilo 3: El vigilante del tiempo (Proactivo)
+    threading.Thread(target=_proactive_reminder_loop, daemon=True).start()
+    
     # Hilo principal: pywebview (dashboard)
     bridge = Bridge()
     DASHBOARD_HTML = "ui_dashboard/index.html"
@@ -180,6 +186,34 @@ def main():
     )
     webview.start()
 
+def _proactive_reminder_loop():
+    """Revisa el reloj cada 20 segundos y habla si hay un pendiente, actualizando SQL."""
+    import time
+    import datetime
+    
+    while True:
+        now_str = datetime.datetime.now().strftime("%H:%M")
+        
+        for r in app_state.reminders[:]:
+            if r["time"] == now_str:
+                mensaje = f"Interrumpo tus sistemas para recordarte un pendiente: {r['task']}."
+                app_state.set_orb_state("speaking")
+                voice.speak(mensaje)
+                app_state.set_orb_state("idle")
+                
+                # Borramos de la interfaz visual
+                app_state.reminders.remove(r)
+                
+                # Desactivamos el pendiente en SQL Server
+                try:
+                    with app_state._get_connection() as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE Reminders SET IsActive = 0 WHERE Id = ?", (r["id"],))
+                        conn.commit()
+                except Exception as e:
+                    print(f"Error actualizando SQL: {e}")
+                
+        time.sleep(20)
 
 if __name__ == "__main__":
     main()

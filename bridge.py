@@ -51,3 +51,6 @@ class BridgeAPI:
     def get_history(self) -> list:
         # Devuelve el historial en memoria de brain si existe
         return brain._chat_history if hasattr(brain, "_chat_history") else []
+
+    def get_reminders(self) -> list:
+        return self.app_state.reminders if self.app_state else []

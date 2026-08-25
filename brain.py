@@ -47,7 +47,7 @@ El JSON debe tener exactamente esta estructura:
 }}
 
 Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
-- "analyze_screen": params: {{"question": "<qué quiere saber sobre lo que ve en pantalla>"}} (Úsala SOLO si el usuario pide explícitamente ver/analizar/revisar su pantalla)
+- "analyze_screen": params: {{"question": "<la instrucción EXACTA del usuario sobre qué leer o buscar en la pantalla>"}} (Úsala cuando te pidan leer, ver, mirar, o revisar algo en la pantalla).
 - "open_website": params: {{"url": "<dominio o URL>"}}
 - "search_youtube": params: {{"query": "<término de búsqueda>"}}
 - "search_google": params: {{"query": "<término de búsqueda>"}}
@@ -66,6 +66,9 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "answer_question": params: {{"text": "<respuesta concisa, cordial y directa>"}}
 - "send_whatsapp_message": params: {{"contact_name": "<nombre guardado>", "message": "<texto a enviar>"}}
 - "type_text": params: {{"text": "<texto a escribir>", "press_enter": <true/false>}}
+- "remember_fact": params: {{"text": "<resumen de lo que debes anotar>"}} (Úsalo cuando Franco te pida que recuerdes algo, que lo anotes para después o que lo guardes en su memoria).
+- "set_reminder": params: {{"time": "<hora en formato 24h, ej: 17:00>", "task": "<descripción corta>"}} (Úsalo cuando el usuario te pida recordar algo, agendar un pendiente o avisarle a cierta hora).
+- "get_reminders": params: {{}} (OBLIGATORIO: Úsalo SIEMPRE que el usuario te pregunte qué pendientes o tareas tiene para hoy. No inventes tareas leyendo el historial).
 
 Reglas importantes:
 1. "spoken_response" debe ser SIEMPRE una frase corta, fluida y hablada en voz alta
@@ -109,10 +112,17 @@ def _build_context() -> str:
     fecha = now.strftime("%A %d de %B, %Y")
     hora = now.strftime("%H:%M")
     clima = weather.get_today_weather()
+    
     return (
         f"[CONTEXTO ACTUAL]\n"
         f"Fecha: {fecha} | Hora: {hora}\n"
-        f"Clima en Lima, Perú: {clima}\n"
+        f"Clima en Lima, Perú: {clima}\n\n"
+        f"[PERFIL Y MEMORIA BASE DEL USUARIO]\n"
+        f"Nombre: Franco Mariano Pacheco Poemape (Llámalo Franco).\n"
+        f"Perfil: Estudiante de la universidad Cesar Vallejo, en la carrera de 8vo ciclo de Ingeniería de Sistemas Es una persona muy curiosa y le gusta preguntar, crear e innovar tecnologias como la IA.\n"
+        f"Conocimientos técnicos: Redes (VLAN, STP, DHCP).\n"
+        f"Intereses personales: Saber más sobre Inteligencia Artifical, comportamientos, programación y juegos.\n"
+        f"Estilo de vida: Sigue un split Upper/Lower en el gimnasio y una dieta estricta de recomposición corporal (huevos, arroz, pollo).\n"
     )
 
 
@@ -167,12 +177,20 @@ def get_intent_from_text(user_text: str) -> dict:
 
 
 def ask_about_image(image_bytes: bytes, question: str) -> str:
+    # Este candado fuerza a la IA a ignorar el ruido visual y responder solo lo que pides
+    vision_prompt = (
+        "Eres el sistema óptico de JARVIS. Analiza esta captura de pantalla "
+        "y responde ÚNICAMENTE a lo que el usuario pide a continuación. "
+        "Sé directo, conciso y NO describas la interfaz, ni los colores, ni nada que no se haya pedido. "
+        f"Instrucción del usuario: {question}"
+    )
+    
     try:
         response = client.models.generate_content(
             model=config.GEMINI_MODEL_NAME,
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
-                question,
+                vision_prompt,
             ],
         )
         return response.text or "No pude analizar la pantalla."
