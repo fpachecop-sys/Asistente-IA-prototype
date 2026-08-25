@@ -242,6 +242,7 @@ def execute_intent(intent: dict) -> str:
         "play_spotify_track": lambda: spotify_control.search_and_play(params.get("query", "")),
         "answer_question": lambda: params.get("text", ""),
         "send_whatsapp_message": lambda: send_whatsapp_message(params.get("contact_name", ""), params.get("message", "")),
+        "analyze_screen": lambda: analyze_screen(params.get("question", "Describe lo que ves en la pantalla")),
     }
 
     handler = dispatch.get(action)

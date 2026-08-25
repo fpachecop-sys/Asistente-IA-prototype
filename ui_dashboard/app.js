@@ -1,30 +1,40 @@
 // ui_dashboard/app.js
-// Puente entre el dashboard y el backend Python (bridge de pywebview).
-
 const chatMessages = document.getElementById("chat-messages");
 const chatInput = document.getElementById("chat-input");
 const btnSend = document.getElementById("btn-send");
 const btnClear = document.getElementById("btn-clear");
 const clockEl = document.getElementById("clock");
+const dateEl = document.getElementById("date-display");
 const orbIndicator = document.getElementById("orb-indicator");
 const orbLabel = document.getElementById("orb-state-label");
 
 const STATE_LABELS = {
   idle: "En reposo",
   listening: "Escuchando...",
-  thinking: "Pensando...",
-  speaking: "Hablando...",
+  thinking: "Procesando...",
+  speaking: "Transmitiendo...",
 };
 
 // ---------------------------------------------------------
-// Reloj
+// Reloj y Fecha (Estilo HUD)
 // ---------------------------------------------------------
-function updateClock() {
+function updateDateTime() {
   const now = new Date();
+  
+  // Hora formato HH:MM:SS
   clockEl.textContent = now.toLocaleTimeString("es-PE", { hour12: false });
+
+  // Fecha formato: DÍA // DD / MM / YYYY
+  const days = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
+  const dayName = days[now.getDay()];
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+
+  dateEl.textContent = `${dayName} // ${dd}.${mm}.${yyyy}`;
 }
-setInterval(updateClock, 1000);
-updateClock();
+setInterval(updateDateTime, 1000);
+updateDateTime();
 
 // ---------------------------------------------------------
 // Mensajes en el chat
@@ -40,7 +50,7 @@ function appendMessage(role, text) {
   const time = document.createElement("span");
   time.className = "msg-time";
   time.textContent = new Date().toLocaleTimeString("es-PE", {
-    hour: "2-digit", minute: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
   });
 
   wrapper.appendChild(bubble);
@@ -55,10 +65,10 @@ function setOrbState(state) {
 }
 
 // ---------------------------------------------------------
-// Enviar mensaje de texto al backend Python
+// Envío de mensajes
 // ---------------------------------------------------------
 async function sendMessage(text) {
-  if (!text.trim()) return;
+  if (!text || !text.trim()) return;
 
   appendMessage("user", text);
   chatInput.value = "";
@@ -70,7 +80,7 @@ async function sendMessage(text) {
     setOrbState("speaking");
     appendMessage("assistant", result.spoken_response);
   } catch (err) {
-    appendMessage("assistant", "Ocurrió un error al procesar tu mensaje.");
+    appendMessage("assistant", "Fallo en la comunicación con el Core.");
     console.error(err);
   } finally {
     setOrbState("idle");
@@ -79,33 +89,67 @@ async function sendMessage(text) {
 }
 
 btnSend.addEventListener("click", () => sendMessage(chatInput.value));
-
 chatInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendMessage(chatInput.value);
 });
 
-// Botones de acceso rápido
 document.querySelectorAll(".quick-btn").forEach((btn) => {
   btn.addEventListener("click", () => sendMessage(btn.dataset.msg));
 });
 
-// Limpiar conversación (solo visual; el historial real vive en brain.py)
 btnClear.addEventListener("click", () => {
   chatMessages.innerHTML = "";
-  appendMessage("assistant", "Conversación limpiada.");
+  appendMessage("assistant", "Log de comandos reiniciado.");
 });
 
-// ---------------------------------------------------------
-// Minimizar a la bolita
-// ---------------------------------------------------------
+// Minimizar
 document.getElementById("btn-minimize").addEventListener("click", () => {
-  window.pywebview.api.minimize_to_orb();
+  if (window.pywebview && window.pywebview.api) {
+    window.pywebview.api.minimize_to_orb();
+  }
 });
 
 // ---------------------------------------------------------
-// Cargar historial existente al abrir (por si vienes de la bolita)
+// Telemetría y Clima
 // ---------------------------------------------------------
+async function refreshDashboardData() {
+  if (!window.pywebview || !window.pywebview.api) return;
+
+  try {
+    const data = await window.pywebview.api.get_dashboard_data();
+    
+    // Hardware Stats
+    if (data.stats) {
+      const cpu = data.stats.cpu ?? 0;
+      const ramPercent = data.stats.ram_percent ?? 0;
+      
+      document.getElementById("cpu-value").textContent = `${cpu}%`;
+      document.getElementById("cpu-bar").style.width = `${cpu}%`;
+
+      document.getElementById("ram-value").textContent = `${ramPercent}%`;
+      document.getElementById("ram-bar").style.width = `${ramPercent}%`;
+
+      if (data.stats.ram_used_gb !== undefined) {
+        document.getElementById("ram-detail").textContent =
+          `${data.stats.ram_used_gb} / ${data.stats.ram_total_gb} GB`;
+      }
+    }
+
+    // Clima
+    if (data.weather) {
+      const temp = data.weather.temp !== undefined ? `${data.weather.temp}°C` : "--°C";
+      document.getElementById("weather-temp").textContent = temp;
+      document.getElementById("weather-desc").textContent = data.weather.desc || "--";
+      document.getElementById("weather-detail").textContent =
+        `MÁX ${data.weather.tmax}° · MÍN ${data.weather.tmin}° · HUM ${data.weather.humidity}%`;
+    }
+  } catch (err) {
+    console.error("Error al actualizar telemetría:", err);
+  }
+}
+
 window.addEventListener("pywebviewready", async () => {
+  // Cargar historial previo
   try {
     const history = await window.pywebview.api.get_history();
     if (history && history.length) {
@@ -113,25 +157,10 @@ window.addEventListener("pywebviewready", async () => {
       history.forEach((m) => appendMessage(m.role, m.text));
     }
   } catch (err) {
-    console.error("No se pudo cargar el historial:", err);
+    console.error("Error al sincronizar historial:", err);
   }
-});
 
-// app.js (agregar)
-async function refreshDashboardData() {
-  try {
-    const data = await window.pywebview.api.get_dashboard_data();
-    document.getElementById("cpu-value").textContent = data.stats.cpu + "%";
-    document.getElementById("ram-value").textContent = data.stats.ram_percent + "%";
-    document.getElementById("ram-detail").textContent =
-      `${data.stats.ram_used_gb} / ${data.stats.ram_total_gb} GB`;
-    document.getElementById("weather-temp").textContent = data.weather.temp + "°C";
-    document.getElementById("weather-desc").textContent = data.weather.desc;
-    document.getElementById("weather-detail").textContent =
-      `Máx ${data.weather.tmax}° · Mín ${data.weather.tmin}° · Humedad ${data.weather.humidity}%`;
-  } catch (err) {
-    console.error("Error actualizando dashboard:", err);
-  }
-}
-setInterval(refreshDashboardData, 15000); // cada 15s, no satures psutil/API
-refreshDashboardData();
+  // Iniciar telemetría
+  refreshDashboardData();
+  setInterval(refreshDashboardData, 10000);
+});

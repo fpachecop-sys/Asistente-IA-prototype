@@ -47,7 +47,7 @@ class Bridge:
     def get_dashboard_data(self):
         return {
             "stats": system_stats.get_system_stats(),
-            "weather": weather.get_today_weather()
+            "weather": weather.get_today_weather_dict()
         }
 
 
@@ -60,13 +60,25 @@ def _restore_dashboard_from_orb():
 # =========================================================
 #   Lógica compartida de procesamiento (voz o texto)
 # =========================================================
+# main.py
+
 def _process_user_text(user_text: str) -> dict:
     app_state.add_message("user", user_text)
     app_state.set_orb_state("thinking")
 
     intent = brain.get_intent_from_text(user_text)
     action_result_text = actions.execute_intent(intent)
-    spoken_text = intent.get("spoken_response") or action_result_text
+    
+    # NUEVA LÓGICA DE RESPUESTA:
+    action_name = intent.get("action")
+    
+    # Si la acción es analizar la pantalla, unimos el saludo con el análisis real
+    if action_name == "analyze_screen":
+        short_intro = intent.get("spoken_response", "Revisando la pantalla.")
+        spoken_text = f"{short_intro} {action_result_text}"
+    else:
+        # Comportamiento normal para las demás acciones
+        spoken_text = intent.get("spoken_response") or action_result_text
 
     app_state.add_message("assistant", spoken_text)
     app_state.set_orb_state("speaking")

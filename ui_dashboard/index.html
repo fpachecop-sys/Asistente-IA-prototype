@@ -1,90 +1,128 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>JARVIS</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>JARVIS HUD Core</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <div class="app">
-
-  <!-- Header -->
+  <!-- Topbar Futurista -->
   <header class="topbar">
     <div class="brand">
       <span class="brand-dot"></span>
-      <span class="brand-text">J.A.R.V.I.S</span>
+      <span class="brand-text">Y.A.R.I</span>
+      <span class="sys-version">v2.4 // ONLINE</span>
     </div>
-    <div class="clock" id="clock">--:--:--</div>
+
+    <div class="hud-datetime">
+      <div class="date-display" id="date-display">-- // -- / ----</div>
+      <div class="clock" id="clock">00:00:00</div>
+    </div>
+
     <div class="topbar-actions">
-      <button id="btn-minimize" class="icon-btn" title="Minimizar a bolita">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <button id="btn-minimize" class="icon-btn" title="Minimizar a Orbe">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
           <path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
     </div>
   </header>
 
+  <!-- Main Grid -->
   <div class="main-grid">
-    <div class="card">
-      <h3>Sistema</h3>
-      <div class="stat-row"><span>CPU</span><b id="cpu-value">--%</b></div>
-      <div class="stat-row"><span>RAM</span><b id="ram-value">--%</b></div>
-      <div class="stat-row-sub" id="ram-detail">-- / -- GB</div>
-    </div>
-
-  <div class="card">
-    <h3>Clima · Lima</h3>
-    <div class="weather-main">
-      <span id="weather-temp" class="weather-temp">--°C</span>
-      <span id="weather-desc" class="weather-desc">--</span>
-    </div>
-    <div class="stat-row-sub" id="weather-detail">--</div>
-  </div>
-
-    <!-- Sidebar izquierda -->
+    <!-- Sidebar de Diagnósticos y Control -->
     <aside class="panel side-panel">
-      <div class="card">
-        <h3>Estado</h3>
+      <!-- Sistema -->
+      <div class="card hud-card">
+        <div class="card-header">
+          <h3>SISTEMA / HARDWARE</h3>
+          <span class="hud-code">SYS.01</span>
+        </div>
+        <div class="stat-group">
+          <div class="stat-row">
+            <span>CPU</span>
+            <b id="cpu-value" class="neon-text">--%</b>
+          </div>
+          <div class="meter-bar"><div class="meter-fill" id="cpu-bar" style="width: 0%"></div></div>
+        </div>
+
+        <div class="stat-group">
+          <div class="stat-row">
+            <span>RAM</span>
+            <b id="ram-value" class="neon-text">--%</b>
+          </div>
+          <div class="meter-bar"><div class="meter-fill" id="ram-bar" style="width: 0%"></div></div>
+          <div class="stat-row-sub" id="ram-detail">-- / -- GB</div>
+        </div>
+      </div>
+
+      <!-- Clima -->
+      <div class="card hud-card">
+        <div class="card-header">
+          <h3>ATMÓSFERA // LIMA</h3>
+          <span class="hud-code">MET.04</span>
+        </div>
+        <div class="weather-main">
+          <span id="weather-temp" class="weather-temp">--°C</span>
+          <span id="weather-desc" class="weather-desc">Cargando...</span>
+        </div>
+        <div class="stat-row-sub" id="weather-detail">--</div>
+      </div>
+
+      <!-- Estado Asistente -->
+      <div class="card hud-card">
+        <div class="card-header">
+          <h3>ESTADO CORE</h3>
+        </div>
         <div class="orb-status">
           <div class="orb-dot" id="orb-indicator"></div>
           <span id="orb-state-label">En reposo</span>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Accesos rápidos</h3>
+      <!-- Accesos Rápidos -->
+      <div class="card hud-card">
+        <div class="card-header">
+          <h3>ACCESOS RÁPIDOS</h3>
+        </div>
         <div class="quick-actions">
-          <button class="quick-btn" data-msg="¿cómo está el clima hoy?">Clima de hoy</button>
-          <button class="quick-btn" data-msg="¿qué tengo pendiente hoy?">Pendientes</button>
+          <button class="quick-btn" data-msg="¿cómo está el clima hoy?">&gt; Clima de hoy</button>
+          <button class="quick-btn" data-msg="¿qué tengo pendiente hoy?">&gt; Pendientes</button>
         </div>
       </div>
     </aside>
 
-    <!-- Conversación central -->
+    <!-- Panel de Conversación -->
     <main class="panel chat-panel">
       <div class="chat-header">
-        <h2>Conversación</h2>
-        <button id="btn-clear" class="ghost-btn">Limpiar</button>
+        <div class="chat-title-group">
+          <h2>CANAL DE COMUNICACIÓN</h2>
+          <span class="status-indicator-inline">ACTIVO</span>
+        </div>
+        <button id="btn-clear" class="ghost-btn">LIMPIAR LOG</button>
       </div>
 
       <div class="chat-messages" id="chat-messages">
         <div class="msg msg-assistant">
-          <div class="bubble">Hola, soy JARVIS. Backend activo. ¿En qué te ayudo hoy?</div>
-          <span class="msg-time">--:--</span>
+          <div class="bubble">Sistemas en línea. Interfaz HUD sincronizada. ¿En qué te ayudo hoy?</div>
+          <span class="msg-time">00:00</span>
         </div>
       </div>
 
       <div class="chat-input-row">
-        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." autocomplete="off">
-        <button id="btn-send" class="send-btn" title="Enviar">
+        <input type="text" id="chat-input" placeholder="Ingresa un comando o pregunta..." autocomplete="off">
+        <button id="btn-send" class="send-btn" title="Transmitir">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M3 11l18-8-8 18-2-8-8-2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
     </main>
-
   </div>
 </div>
 

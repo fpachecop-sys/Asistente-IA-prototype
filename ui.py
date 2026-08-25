@@ -1,8 +1,7 @@
 # ui.py
 """
-Bolita flotante. Ahora vive en un hilo del mismo proceso y recibe
-comandos por cola en vez de ser un proceso aparte, así el estado
-(historial, hilo de grabación, etc.) nunca se duplica ni se pierde.
+Núcleo flotante HUD (Bolita). Ahora con estética Sci-Fi,
+anillos segmentados rotatorios y pulsaciones dinámicas.
 """
 import customtkinter as ctk
 import math
@@ -10,19 +9,19 @@ import queue
 
 import config
 
+# Colores actualizados para un estilo neón / cyber
 STATE_COLORS = {
-    "idle": ("#2b3a55", "#3d5175"),
-    "listening": ("#00c8ff", "#33d9ff"),
-    "thinking": ("#9b30ff", "#b565ff"),
-    "speaking": ("#00ff9d", "#33ffb5"),
+    "idle": ("#0a3a52", "#00e5ff"),       # Azul oscuro / Cian neón
+    "listening": ("#004d33", "#00ffaa"),  # Verde oscuro / Verde neón
+    "thinking": ("#4a0080", "#b520ff"),   # Púrpura oscuro / Magenta brillante
+    "speaking": ("#00e5ff", "#ffffff"),   # Cian neón / Blanco puro
 }
 STATE_LABELS = {
-    "idle": "En reposo",
-    "listening": "Escuchando...",
-    "thinking": "Pensando...",
-    "speaking": "Hablando...",
+    "idle": "EN REPOSO",
+    "listening": "ESCUCHANDO...",
+    "thinking": "PROCESANDO...",
+    "speaking": "TRANSMITIENDO...",
 }
-
 
 class JarvisUI(ctk.CTk):
     def __init__(self, app_state, on_restore_dashboard=None, start_hidden=True):
@@ -53,21 +52,24 @@ class JarvisUI(ctk.CTk):
         )
         self.canvas.pack(fill="both", expand=True)
 
+        # Fuente monoespaciada para un look más técnico
         self.status_label = ctk.CTkLabel(
             self, text=STATE_LABELS["idle"],
-            font=("Segoe UI", 12, "bold"),
-            text_color="#dddddd", fg_color=config.UI_TRANSPARENT_COLOR,
+            font=("Consolas", 11, "bold"),
+            text_color="#00e5ff", fg_color=config.UI_TRANSPARENT_COLOR,
         )
         self.status_label.place(relx=0.5, rely=0.92, anchor="center")
 
         self.canvas.bind("<ButtonPress-1>", self._start_move)
         self.canvas.bind("<B1-Motion>", self._do_move)
-        # Doble click derecho: vuelve al dashboard (ya no cierra la app)
         self.canvas.bind("<Double-Button-3>", lambda e: self._restore_dashboard())
 
         self._drag_data = {"x": 0, "y": 0}
         self.current_state = "idle"
+        
+        # Variables para controlar la rotación geométrica
         self._pulse_phase = 0.0
+        self._rotation_angle = 0.0
 
         if start_hidden:
             self.withdraw()
@@ -93,14 +95,11 @@ class JarvisUI(ctk.CTk):
         if state not in STATE_COLORS:
             state = "idle"
         self.current_state = state
-        self.status_label.configure(text=STATE_LABELS[state])
+        self.status_label.configure(
+            text=STATE_LABELS[state],
+            text_color=STATE_COLORS[state][1]  # El texto cambia al color brillante del estado
+        )
 
-    # -----------------------------------------------------
-    #   Escucha comandos desde app_state.orb_commands
-    #   (así el bridge de pywebview, que corre en otro hilo,
-    #   nunca toca Tkinter directamente — solo mete comandos
-    #   en la cola, que es segura entre hilos).
-    # -----------------------------------------------------
     def _poll_commands(self):
         try:
             while True:
@@ -119,25 +118,59 @@ class JarvisUI(ctk.CTk):
         self.canvas.delete("all")
         w, h = config.UI_WIDTH, config.UI_HEIGHT
         cx, cy = w // 2, h // 2 - 15
-        base_radius = 55
+        base_radius = 50
 
         color_inner, color_outer = STATE_COLORS[self.current_state]
-        speed = {"idle": 0.04, "listening": 0.25, "thinking": 0.15, "speaking": 0.35}[self.current_state]
+        
+        # Velocidad dinámica según el estado
+        speed = {"idle": 0.03, "listening": 0.15, "thinking": 0.20, "speaking": 0.25}[self.current_state]
+        
         self._pulse_phase += speed
-        pulse = math.sin(self._pulse_phase) * 8
+        self._rotation_angle = (self._rotation_angle + (speed * 40)) % 360
+        
+        pulse = math.sin(self._pulse_phase) * 6
         radius = base_radius + pulse
 
+        # 1. Anillo exterior punteado (Radar límite)
+        bound_r = radius + 18
         self.canvas.create_oval(
-            cx - radius - 15, cy - radius - 15, cx + radius + 15, cy + radius + 15,
-            outline=color_outer, width=2,
+            cx - bound_r, cy - bound_r, cx + bound_r, cy + bound_r,
+            outline=color_inner, width=1, dash=(2, 6)
         )
-        self.canvas.create_oval(
-            cx - radius, cy - radius, cx + radius, cy + radius,
-            fill=color_inner, outline=color_outer, width=3,
-        )
-        core_r = radius * 0.35
+
+        # 2. Anillo medio segmentado (Gira a la inversa)
+        out_r = radius + 5
+        for i in range(6):
+            start_angle = -self._rotation_angle * 1.5 + (i * 60)
+            self.canvas.create_arc(
+                cx - out_r, cy - out_r, cx + out_r, cy + out_r,
+                start=start_angle, extent=30,
+                style="arc", outline=color_inner, width=2
+            )
+
+        # 3. Anillo interior segmentado grueso (Gira en sentido horario)
+        mid_r = radius - 10
+        for i in range(3):
+            start_angle = self._rotation_angle + (i * 120)
+            self.canvas.create_arc(
+                cx - mid_r, cy - mid_r, cx + mid_r, cy + mid_r,
+                start=start_angle, extent=70,
+                style="arc", outline=color_outer, width=4
+            )
+
+        # 4. Núcleo central pulsante
+        core_r = 12 + math.sin(self._pulse_phase * 2.5) * 4
         self.canvas.create_oval(
             cx - core_r, cy - core_r, cx + core_r, cy + core_r,
-            fill=color_outer, outline="",
+            fill=color_outer, outline=""
         )
-        self.after(30, self._animate)
+        
+        # 5. Destello sutil alrededor del núcleo
+        glow_r = core_r + 6
+        self.canvas.create_oval(
+            cx - glow_r, cy - glow_r, cx + glow_r, cy + glow_r,
+            outline=color_outer, width=1, dash=(1, 3)
+        )
+
+        # Refresca a ~30fps
+        self.after(33, self._animate)
