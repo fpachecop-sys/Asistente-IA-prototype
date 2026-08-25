@@ -72,9 +72,12 @@ def search_and_play(query: str) -> str:
         # Abre la canción directamente en la app de escritorio de Spotify.
         # Si Spotify no estaba abierto, esto también lo abre automáticamente.
         # spotify_control.py (reemplaza el final de search_and_play)
+        import subprocess
         import time
-        os.system(f"start spotify:track:{track_id}")
-        time.sleep(1.5)  # da tiempo a que Spotify abra/cargue el track antes de que el usuario note algo raro
+        cmd = f"Start-Process 'spotify:track:{track_id}' -WindowStyle Minimized"
+        subprocess.run(["powershell", "-command", cmd], shell=True)
+        
+        time.sleep(1.5) 
         return f"Reproduciendo {track_name} de {artist_name} en Spotify."
 
     except Exception as e:
