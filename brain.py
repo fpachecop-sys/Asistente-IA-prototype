@@ -13,10 +13,12 @@ texto de la respuesta directa.
 
 import json
 import re
-from google import genai
 import datetime
-import weather
+from google import genai
+from google.genai import types
+
 import config
+import weather
 
 # Inicializamos el cliente oficial de Gemini
 client = genai.Client(api_key=config.GEMINI_API_KEY)
@@ -60,7 +62,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "get_current_date": params: {{}}
 - "get_current_time": params: {{}}
 - "answer_question": params: {{"text": "<respuesta concisa, cordial y directa>"}}
-- "send_whatsapp_message": params: {"contact_name": "<nombre guardado>", "message": "<texto a enviar>"}
+- "send_whatsapp_message": params: {{"contact_name": "<nombre guardado>", "message": "<texto a enviar>"}}
 
 Reglas importantes:
 1. "spoken_response" debe ser SIEMPRE una frase corta, fluida y hablada en voz alta
@@ -85,6 +87,7 @@ def _clean_json_response(raw_text: str) -> str:
     cleaned = re.sub(r"```$", "", cleaned).strip()
     return cleaned
 
+
 def _build_context() -> str:
     now = datetime.datetime.now()
     fecha = now.strftime("%A %d de %B, %Y")
@@ -95,6 +98,7 @@ def _build_context() -> str:
         f"Fecha: {fecha} | Hora: {hora}\n"
         f"Clima en Lima, Perú: {clima}\n"
     )
+
 
 def get_intent_from_text(user_text: str) -> dict:
     """
@@ -113,9 +117,9 @@ def get_intent_from_text(user_text: str) -> dict:
         response = client.models.generate_content(
             model=config.GEMINI_MODEL_NAME,
             contents=full_prompt,
-            config={
-                "response_mime_type": "application/json"
-            }
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
         raw_text = response.text or ""
         cleaned = _clean_json_response(raw_text)
