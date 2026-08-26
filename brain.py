@@ -70,6 +70,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "get_reminders": params: {{}} (OBLIGATORIO para leer pendientes. No inventes tareas).
 - "answer_question": params: {{"text": "<respuesta directa, empática o analítica según el contexto>"}}
 - "comment_on_music": params: {{}} (Úsalo EXCLUSIVAMENTE cuando el usuario te pregunte qué está escuchando, qué opinas de su música, o si le gusta la canción actual).
+- "scroll_screen": params: {{"direction": "<abajo/arriba>"}} (Úsalo cuando el usuario te pida explícitamente bajar, subir o scrollear la pantalla actual).
 
 Reglas importantes:
 1. "spoken_response" debe ser la frase exacta que leerá el motor de voz.

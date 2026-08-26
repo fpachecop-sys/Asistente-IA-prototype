@@ -452,6 +452,7 @@ def execute_intent(intent: dict) -> str:
         "analyze_clipboard": lambda: analyze_clipboard(params.get("query", "")),
         "analyze_online_pdf": lambda: analyze_online_pdf(params.get("url", ""), params.get("query", "")),
         "comment_on_music": lambda: comment_on_music(),
+        "scroll_screen": lambda: scroll_screen(params.get("direction", "abajo")),
     }
         
     handler = dispatch.get(action)
