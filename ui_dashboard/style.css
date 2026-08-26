@@ -1,13 +1,36 @@
+/* Reemplaza tu :root actual por este: */
 :root {
   --bg: #05080e;
   --panel: rgba(10, 16, 26, 0.75);
   --panel-border: rgba(0, 200, 255, 0.25);
-  --accent: #00e5ff;
-  --accent-dim: rgba(0, 229, 255, 0.12);
-  --accent-glow: rgba(0, 229, 255, 0.35);
   --text: #e2f1f8;
   --text-dim: #5c7f99;
   --radius: 6px;
+  
+  /* Variables dinámicas por defecto (Cian) */
+  --accent: #00e5ff;
+  --accent-dim: rgba(0, 229, 255, 0.12);
+  --accent-glow: rgba(0, 229, 255, 0.35);
+}
+
+/* TEMAS DE COLOR */
+[data-theme="magenta"] {
+  --accent: #ff00ff;
+  --accent-dim: rgba(255, 0, 255, 0.12);
+  --accent-glow: rgba(255, 0, 255, 0.35);
+  --panel-border: rgba(255, 0, 255, 0.25);
+}
+[data-theme="matrix"] {
+  --accent: #00ff88;
+  --accent-dim: rgba(0, 255, 136, 0.12);
+  --accent-glow: rgba(0, 255, 136, 0.35);
+  --panel-border: rgba(0, 255, 136, 0.25);
+}
+[data-theme="amber"] {
+  --accent: #ffaa00;
+  --accent-dim: rgba(255, 170, 0, 0.12);
+  --accent-glow: rgba(255, 170, 0, 0.35);
+  --panel-border: rgba(255, 170, 0, 0.25);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -338,3 +361,57 @@ body {
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-thumb { background: rgba(0, 200, 255, 0.2); border-radius: 3px; }
+
+.theme-selector {
+  display: flex;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.theme-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(255,255,255,0.2);
+  transition: transform 0.2s;
+}
+.theme-btn:hover { transform: scale(1.3); }
+
+.highlight-card {
+  border-color: var(--accent) !important;
+  box-shadow: inset 0 0 15px var(--accent-dim);
+}
+
+#skill-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px dashed var(--accent);
+  color: var(--text);
+  padding: 8px;
+  border-radius: var(--radius);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  outline: none;
+}
+
+.skills-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+.skill-item {
+  background: rgba(255,255,255,0.03);
+  padding: 8px;
+  border-left: 2px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+.skill-item strong { font-size: 12px; color: var(--accent); margin-bottom: 2px;}
+.skill-item span { font-size: 11px; color: var(--text-dim); font-style: italic;}

@@ -189,3 +189,47 @@ window.addEventListener("pywebviewready", async () => {
   refreshDashboardData();
   setInterval(refreshDashboardData, 10000);
 });
+
+// --- LÓGICA DE TEMAS DE COLOR ---
+const themeButtons = document.querySelectorAll('.theme-btn');
+const savedTheme = localStorage.getItem('yari_theme') || 'cyan';
+document.body.setAttribute('data-theme', savedTheme);
+
+themeButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const newTheme = btn.getAttribute('data-color');
+    document.body.setAttribute('data-theme', newTheme);
+    localStorage.setItem('yari_theme', newTheme);
+  });
+});
+
+// --- LÓGICA DEL INYECTOR DE PERSONALIDAD ---
+const btnInject = document.getElementById('btn-inject');
+const skillInput = document.getElementById('skill-input');
+
+async function injectSkill() {
+  const rule = skillInput.value.trim();
+  if (!rule) return;
+  
+  // Enviamos una directriz de sistema disfrazada de orden del usuario
+  const command = `DIRECTRIZ DE SISTEMA DE ALTA PRIORIDAD. A partir de ahora debes cumplir esta regla de personalidad/habilidad: ${rule}. Confirma de manera muy breve diciendo "Protocolos de personalidad actualizados."`;
+  
+  skillInput.value = "";
+  appendMessage("user", `[INYECCIÓN DE PROTOCOLO]: ${rule}`);
+  setOrbState("thinking");
+
+  try {
+    const result = await window.pywebview.api.send_text_message(command);
+    setOrbState("speaking");
+    appendMessage("assistant", result.spoken_response);
+  } catch (err) {
+    appendMessage("assistant", "Error al inyectar protocolo.");
+  } finally {
+    setOrbState("idle");
+  }
+}
+
+btnInject.addEventListener('click', injectSkill);
+skillInput.addEventListener('keydown', (e) => {
+  if (e.key === "Enter") injectSkill();
+});

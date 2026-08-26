@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body data-theme="cyan">
 
 <div class="app">
   <!-- Topbar Futurista -->
@@ -16,7 +16,15 @@
     <div class="brand">
       <span class="brand-dot"></span>
       <span class="brand-text">Y.A.R.I</span>
-      <span class="sys-version">v2.4 // ONLINE</span>
+      <span class="sys-version">v3.0 // ONLINE</span>
+    </div>
+
+    <!-- Selector de Temas -->
+    <div class="theme-selector">
+      <div class="theme-btn" data-color="cyan" style="background: #00e5ff;" title="Núcleo Cian"></div>
+      <div class="theme-btn" data-color="magenta" style="background: #ff00ff;" title="Núcleo Magenta"></div>
+      <div class="theme-btn" data-color="matrix" style="background: #00ff88;" title="Núcleo Matrix"></div>
+      <div class="theme-btn" data-color="amber" style="background: #ffaa00;" title="Núcleo Ámbar"></div>
     </div>
 
     <div class="hud-datetime">
@@ -37,6 +45,7 @@
   <div class="main-grid">
     <!-- Sidebar de Diagnósticos y Control -->
     <aside class="panel side-panel">
+      
       <!-- Sistema -->
       <div class="card hud-card">
         <div class="card-header">
@@ -61,46 +70,60 @@
         </div>
       </div>
 
-      <!-- Clima -->
-      <div class="card hud-card">
+      <!-- Inyección de Personalidad (NUEVO) -->
+      <div class="card hud-card highlight-card">
         <div class="card-header">
-          <h3>ATMÓSFERA // LIMA</h3>
-          <span class="hud-code">MET.04</span>
+          <h3>INYECCIÓN DE PROTOCOLOS</h3>
+          <span class="hud-code">SKILL.UP</span>
         </div>
-        <div class="weather-main">
-          <span id="weather-temp" class="weather-temp">--°C</span>
-          <span id="weather-desc" class="weather-desc">Cargando...</span>
-        </div>
-        <div class="stat-row-sub" id="weather-detail">--</div>
-      </div>
-
-      <!-- Estado Asistente -->
-      <div class="card hud-card">
-        <div class="card-header">
-          <h3>ESTADO CORE</h3>
-        </div>
-        <div class="orb-status">
-          <div class="orb-dot" id="orb-indicator"></div>
-          <span id="orb-state-label">En reposo</span>
+        <div class="stat-row-sub" style="margin-bottom: 8px;">Añade habilidades o cambia su actitud temporalmente.</div>
+        <div class="chat-input-row" style="padding: 0; background: transparent; border: none;">
+          <input type="text" id="skill-input" placeholder="Ej: A partir de ahora eres experta en Big Data..." autocomplete="off">
+          <button id="btn-inject" class="send-btn" title="Inyectar a la IA">✚</button>
         </div>
       </div>
 
-      <!-- Accesos Rápidos -->
+      <!-- Habilidades y Ejemplos (NUEVO) -->
       <div class="card hud-card">
         <div class="card-header">
-          <h3>ACCESOS RÁPIDOS</h3>
+          <h3>BASE DE DATOS: HABILIDADES</h3>
+          <span class="hud-code">DB.04</span>
         </div>
-        <div class="quick-actions">
-          <button class="quick-btn" data-msg="¿cómo está el clima hoy?">&gt; Clima de hoy</button>
-          <button class="quick-btn" data-msg="¿qué tengo pendiente hoy?">&gt; Pendientes</button>
+        <div class="skills-container">
+          <div class="skill-item">
+            <strong>👁️ Visión y Análisis</strong>
+            <span>"Describe qué error hay en mi pantalla."</span>
+          </div>
+          <div class="skill-item">
+            <strong>📋 Lector de Portapapeles</strong>
+            <span>"Hazme un resumen de este documento."</span>
+          </div>
+          <div class="skill-item">
+            <strong>🎵 Control Multimedia</strong>
+            <span>"Pon Metallica en Spotify" / "¿Qué opinas de mi música?"</span>
+          </div>
+          <div class="skill-item">
+            <strong>💾 Memoria y Alarmas</strong>
+            <span>"Avísame a las 17:00 que tengo clases."</span>
+          </div>
+          <div class="skill-item">
+            <strong>🎮 Ejecución de Sistemas</strong>
+            <span>"Abre Counter Strike 2." / "Abre el navegador."</span>
+          </div>
+          <div class="skill-item">
+            <strong>⌨️ Control Físico (Anti-Ban)</strong>
+            <span>"Baja la pantalla." / "Escribe 'Hola' y da enter."</span>
+          </div>
         </div>
       </div>
+
+      <!-- Pendientes Activos -->
       <div class="card hud-card">
         <div class="card-header">
           <h3>PENDIENTES ACTIVOS</h3>
         </div>
         <div id="reminders-container" class="quick-actions">
-           <!-- Aquí aparecerán los bloquecitos por arte de magia -->
+           <!-- Bloques dinámicos -->
         </div>
       </div>
     </aside>
@@ -112,12 +135,16 @@
           <h2>CANAL DE COMUNICACIÓN</h2>
           <span class="status-indicator-inline">ACTIVO</span>
         </div>
+        <div class="orb-status">
+          <div class="orb-dot" id="orb-indicator"></div>
+          <span id="orb-state-label">En reposo</span>
+        </div>
         <button id="btn-clear" class="ghost-btn">LIMPIAR LOG</button>
       </div>
 
       <div class="chat-messages" id="chat-messages">
         <div class="msg msg-assistant">
-          <div class="bubble">Sistemas en línea. Interfaz HUD sincronizada. ¿En qué te ayudo hoy?</div>
+          <div class="bubble">Sistemas en línea. Interfaz HUD sincronizada con el nuevo motor neuronal.</div>
           <span class="msg-time">00:00</span>
         </div>
       </div>
