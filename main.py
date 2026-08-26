@@ -73,25 +73,24 @@ def _process_user_text(user_text: str) -> dict:
     action_result_text = actions.execute_intent(intent)
     
     action_name = intent.get("action")
+    short_intro = intent.get("spoken_response", "").strip()
     
-    # Lista de acciones inteligentes que generan textos largos
     acciones_de_lectura = [
         "analyze_screen", 
         "analyze_clipboard", 
         "analyze_document", 
         "analyze_online_pdf", 
         "comment_on_music", 
-        "get_reminders",
-        "answer_question"
+        "get_reminders"
     ]
     
-    if action_name in acciones_de_lectura:
-        short_intro = intent.get("spoken_response", "")
-        # Sumamos la frase corta de introducción + el análisis profundo
+    # 🛑 CORRECCIÓN: Si es una pregunta normal, NO sumamos las frases
+    if action_name == "answer_question":
+        spoken_text = action_result_text
+    elif action_name in acciones_de_lectura:
         spoken_text = f"{short_intro} {action_result_text}"
     else:
-        # Comandos simples (ej. abrir apps) solo usan la frase corta
-        spoken_text = intent.get("spoken_response") or action_result_text
+        spoken_text = short_intro or action_result_text
 
     # Limpiamos asteriscos y formato markdown
     spoken_text = spoken_text.replace("*", "").replace("#", "")

@@ -1,13 +1,8 @@
 """
 voice.py
 --------
-Encapsula el reconocimiento de voz (Speech-to-Text vía Google Speech API,
-gratuito a través de la librería `speech_recognition`) y la síntesis de
-voz (Text-to-Speech vía `pyttsx3`, 100% local y sin costo).
-
-Ambas operaciones son bloqueantes por naturaleza, así que SIEMPRE deben
-llamarse desde un hilo (threading.Thread) para no congelar la interfaz
-gráfica de Tkinter.
+Encapsula el reconocimiento de voz (Speech-to-Text) y la síntesis de
+voz de ultra-realismo usando ElevenLabs mediante API REST pura.
 """
 
 import asyncio
@@ -16,39 +11,28 @@ import os
 import tempfile
 import uuid
 import wave
+import requests
 
 import pyaudio
 import speech_recognition as sr
 import pyttsx3
-import edge_tts
 import pygame
 
 import config
 
-# Inicializamos el mezclador de audio de pygame una sola vez (muy liviano,
-# solo maneja reproducción, no hay procesamiento pesado).
 pygame.mixer.init()
 
 # ---------------------------------------------------------
-# Reconocedor de voz (se reutiliza la misma instancia)
+# Reconocedor de voz
 # ---------------------------------------------------------
 _recognizer = sr.Recognizer()
 
-# Configuración de grabación directa en memoria para Push-To-Talk
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
 
-
 class PushToTalkRecorder:
-    """
-    Graba audio en memoria (RAM) mientras el usuario mantiene presionado
-    el hotkey. No usa ningún reconocimiento continuo ni consume CPU
-    mientras no se está grabando: el stream solo existe entre start() y
-    stop_and_get_audio().
-    """
-
     def __init__(self):
         self.p = pyaudio.PyAudio()
         self.stream = None
@@ -56,7 +40,6 @@ class PushToTalkRecorder:
         self.recording = False
 
     def start(self):
-        """Inicia la grabación en memoria en segundo plano."""
         self.frames = []
         self.recording = True
         try:
@@ -72,8 +55,6 @@ class PushToTalkRecorder:
             self.recording = False
 
     def record_chunk(self):
-        """Lee un bloque de audio si está grabando. Se llama repetidamente
-        desde el hilo de grabación en main.py mientras la tecla está abajo."""
         if self.recording and self.stream:
             try:
                 data = self.stream.read(CHUNK, exception_on_overflow=False)
@@ -82,8 +63,6 @@ class PushToTalkRecorder:
                 pass
 
     def stop_and_get_audio(self):
-        """Detiene la grabación y convierte los bytes recolectados a
-        un objeto sr.AudioData listo para transcribir."""
         self.recording = False
         if self.stream:
             try:
@@ -95,7 +74,6 @@ class PushToTalkRecorder:
         if not self.frames:
             return None
 
-        # Convertimos los frames PCM crudos en un archivo WAV en RAM
         wav_buffer = io.BytesIO()
         wf = wave.open(wav_buffer, "wb")
         wf.setnchannels(CHANNELS)
@@ -110,8 +88,6 @@ class PushToTalkRecorder:
 
 
 def transcribe_audio_data(audio_data) -> str:
-    """Convierte el audio capturado (sr.AudioData) a texto usando la
-    API gratuita de Google (a través de speech_recognition)."""
     if not audio_data:
         return ""
     try:
@@ -120,32 +96,54 @@ def transcribe_audio_data(audio_data) -> str:
         return ""
 
 
-# ---------------------------------------------------------
-# Texto a voz (TTS) - Edge TTS (voces neuronales, requiere internet)
-# con fallback automático a pyttsx3 (offline) si algo falla.
-# ---------------------------------------------------------
-async def _edge_tts_save(text: str, filepath: str):
-    """Genera el audio con Edge TTS y lo guarda como MP3."""
-    communicate = edge_tts.Communicate(
-        text,
-        voice=config.TTS_EDGE_VOICE,
-        rate=config.TTS_EDGE_RATE,
-        volume=config.TTS_EDGE_VOLUME,
-    )
-    await communicate.save(filepath)
-
-
-def _speak_edge_tts(text: str) -> bool:
-    """
-    Sintetiza el texto con una voz neuronal de Microsoft Edge (gratis,
-    sin API key, mucho más natural que las voces SAPI5 de Windows) y
-    la reproduce con pygame. Devuelve True si tuvo éxito, False si falló
-    (por ejemplo, sin internet), para poder hacer fallback a pyttsx3.
-    """
-    temp_path = os.path.join(tempfile.gettempdir(), f"jarvis_tts_{uuid.uuid4().hex}.mp3")
+def stop_audio():
+    """Interrumpe la reproducción de voz instantáneamente."""
     try:
-        asyncio.run(_edge_tts_save(text, temp_path))
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
+    except Exception:
+        pass
 
+
+# ---------------------------------------------------------
+# Texto a voz (TTS) - ElevenLabs API REST Directa
+# ---------------------------------------------------------
+def _speak_elevenlabs(text: str) -> bool:
+    """Genera audio hiperrealista conectándose directo al servidor de ElevenLabs."""
+    if not getattr(config, 'ELEVENLABS_API_KEY', None) or not getattr(config, 'ELEVENLABS_VOICE_ID', None):
+        return False
+        
+    temp_path = os.path.join(tempfile.gettempdir(), f"yari_tts_{uuid.uuid4().hex}.mp3")
+    
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{config.ELEVENLABS_VOICE_ID}"
+    
+    headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": config.ELEVENLABS_API_KEY
+    }
+    
+    data = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.75
+        }
+    }
+    
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        
+        if response.status_code != 200:
+            print(f"[Error ElevenLabs API]: {response.text}")
+            return False
+            
+        with open(temp_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    f.write(chunk)
+                    
         pygame.mixer.music.load(temp_path)
         pygame.mixer.music.play()
         while pygame.mixer.music.get_busy():
@@ -153,7 +151,7 @@ def _speak_edge_tts(text: str) -> bool:
         pygame.mixer.music.unload()
         return True
     except Exception as e:
-        print(f"[Edge TTS falló, usando fallback pyttsx3]: {e}")
+        print(f"[ElevenLabs falló, usando fallback pyttsx3]: {e}")
         return False
     finally:
         try:
@@ -164,12 +162,12 @@ def _speak_edge_tts(text: str) -> bool:
 
 
 def _speak_pyttsx3(text: str):
-    """Fallback 100% offline usando las voces nativas del sistema (SAPI5)."""
+    """Fallback 100% offline."""
     engine = pyttsx3.init()
     engine.setProperty("rate", config.TTS_RATE)
     engine.setProperty("volume", config.TTS_VOLUME)
 
-    if config.TTS_VOICE_INDEX is not None:
+    if getattr(config, 'TTS_VOICE_INDEX', None) is not None:
         voices = engine.getProperty("voices")
         if 0 <= config.TTS_VOICE_INDEX < len(voices):
             engine.setProperty("voice", voices[config.TTS_VOICE_INDEX].id)
@@ -180,40 +178,10 @@ def _speak_pyttsx3(text: str):
 
 
 def speak(text: str):
-    """
-    Reproduce el texto dado como voz. Intenta primero Edge TTS (voz
-    neuronal natural en español); si falla por cualquier motivo (sin
-    internet, servicio caído, etc.), cae automáticamente a pyttsx3.
-    """
     if not text:
         return
-
-    if config.TTS_USE_EDGE:
-        success = _speak_edge_tts(text)
-        if success:
-            return
-
-    _speak_pyttsx3(text)
-
-
-def list_available_voices():
-    """Utilidad de diagnóstico: imprime las voces instaladas en el sistema
-    junto a su índice, para que puedas elegir TTS_VOICE_INDEX en config.py."""
-    engine = pyttsx3.init()
-    voices = engine.getProperty("voices")
-    for i, v in enumerate(voices):
-        print(f"[{i}] {v.name} - {v.languages} - id={v.id}")
-    engine.stop()
     
-def stop_audio():
-    """Interrumpe la reproducción de voz instantáneamente."""
-    try:
-        if pygame.mixer.get_init():
-            pygame.mixer.music.stop()
-    except Exception as e:
-        pass
-
-if __name__ == "__main__":
-    # Ejecuta este archivo directamente para ver qué voces tienes disponibles:
-    #   python voice.py
-    list_available_voices()
+    success = _speak_elevenlabs(text)
+    
+    if not success:
+        _speak_pyttsx3(text)
