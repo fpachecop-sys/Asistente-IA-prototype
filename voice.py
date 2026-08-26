@@ -204,7 +204,14 @@ def list_available_voices():
     for i, v in enumerate(voices):
         print(f"[{i}] {v.name} - {v.languages} - id={v.id}")
     engine.stop()
-
+    
+def stop_audio():
+    """Interrumpe la reproducción de voz instantáneamente."""
+    try:
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
+    except Exception as e:
+        pass
 
 if __name__ == "__main__":
     # Ejecuta este archivo directamente para ver qué voces tienes disponibles:

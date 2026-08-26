@@ -127,16 +127,24 @@ def register_push_to_talk():
 
     def on_key_event(event):
         global _is_holding_key, _is_busy_processing
+        
+        # Si la tecla presionada no es la que configuraste (ej. 'k'), ignoramos
         if event.name.lower() != target_key:
             return
 
+        # Cuando PRESIONAS la tecla hacia abajo
         if event.event_type == keyboard.KEY_DOWN:
+            # 🛑 NUEVO: Interrumpir a la IA inmediatamente si estaba hablando
+            voice.stop_audio()
+            
+            # Continuamos con la lógica normal de grabación
             if not _is_holding_key and not _is_busy_processing:
                 _is_holding_key = True
                 app_state.set_orb_state("listening")
                 _recorder.start()
                 threading.Thread(target=_recording_loop, daemon=True).start()
 
+        # Cuando SUELTAS la tecla
         elif event.event_type == keyboard.KEY_UP:
             if _is_holding_key:
                 _is_holding_key = False

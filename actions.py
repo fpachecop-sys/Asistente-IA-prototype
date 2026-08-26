@@ -5,10 +5,6 @@ Módulo de automatización. Recibe un diccionario de "intención" (JSON)
 generado por Gemini y ejecuta la acción correspondiente en el sistema
 operativo: abrir webs, buscar en YouTube, controlar volumen, abrir
 programas, multimedia (play/pause), etc.
-
-Diseñado para ser multiplataforma en lo posible; algunas acciones
-(volumen, teclas multimedia) están optimizadas para Windows mediante
-`pycaw` / `keyboard`, con fallback silencioso en otros SO.
 """
 
 import os
@@ -25,10 +21,15 @@ import time
 import uuid
 import psutil
 import pyautogui
+import pyperclip
+import requests
+import io
+import PyPDF2
+import asyncio
 
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
-# Intentamos importar pycaw solo si estamos en Windows (no falla en Linux/Mac)
+# Intentamos importar pycaw solo si estamos en Windows
 try:
     if SYSTEM == "Windows":
         from ctypes import cast, POINTER
@@ -40,42 +41,84 @@ try:
 except ImportError:
     PYCAW_AVAILABLE = False
 
-import keyboard
-import spotify_control  # también sirve para simular teclas multimedia
+import spotify_control
 
 
 # =========================================================
-#   CONTROL DE VOLUMEN (Windows via pycaw, fallback teclas)
+#  CONTROL DE VOLUMEN (Windows via pycaw, fallback teclas)
 # =========================================================
 def _get_windows_volume_interface():
     devices = AudioUtilities.GetSpeakers()
     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
     return cast(interface, POINTER(IAudioEndpointVolume))
 
-
 def set_volume(percent: int):
-    """Establece el volumen del sistema a un porcentaje (0-100)."""
     percent = max(0, min(100, int(percent)))
     if SYSTEM == "Windows" and PYCAW_AVAILABLE:
         vol_interface = _get_windows_volume_interface()
-        # pycaw trabaja con escala logarítmica de -65.25 (mute) a 0.0 (máx)
-        # Convertimos porcentaje lineal a el rango soportado por SetMasterVolumeLevelScalar (0.0 - 1.0)
         vol_interface.SetMasterVolumeLevelScalar(percent / 100, None)
         return f"Volumen ajustado al {percent}%."
     else:
-        # Fallback simple: sube/baja usando teclas multimedia varias veces
         steps = percent // 10
         for _ in range(steps):
             keyboard.send("volume up")
         return "Volumen ajustado (modo compatibilidad)."
 
+def volume_up():
+    keyboard.send("volume up")
+    return "Subiendo volumen."
+
+def volume_down():
+    keyboard.send("volume down")
+    return "Bajando volumen."
+
+def mute_volume():
+    keyboard.send("volume mute")
+    return "Silenciando audio."
+
+
+# =========================================================
+#  MULTIMEDIA (play/pause, siguiente, anterior)
+# =========================================================
+def media_play_pause():
+    keyboard.send("play/pause media")
+    return "Reproduciendo o pausando contenido."
+
+def media_next():
+    keyboard.send("next track")
+    return "Pasando a la siguiente pista."
+
+def media_previous():
+    keyboard.send("previous track")
+    return "Volviendo a la pista anterior."
+
+
+# =========================================================
+#  NAVEGADOR / WEB / YOUTUBE / MENSAJERÍA
+# =========================================================
+def open_website(url: str):
+    if not url.startswith("http"):
+        url = "https://" + url
+    webbrowser.open(url)
+    return f"Abriendo {url}"
+
+def search_youtube(query: str):
+    q = urllib.parse.quote_plus(query)
+    url = f"https://www.youtube.com/results?search_query={q}"
+    webbrowser.open(url)
+    return f"Buscando '{query}' en YouTube."
+
+def search_google(query: str):
+    q = urllib.parse.quote_plus(query)
+    url = f"https://www.google.com/search?q={q}"
+    webbrowser.open(url)
+    return f"Buscando '{query}' en Google."
+
 def send_whatsapp_message(contact_name: str, message: str):
     number = CONTACTS.get(contact_name.lower())
     if not number:
         return f"No tengo el número de {contact_name} guardado."
-    
     try:
-        # sendwhatmsg_instantly envía al momento y evita el error de la hora
         pywhatkit.sendwhatmsg_instantly(
             phone_no=number,
             message=message,
@@ -92,74 +135,12 @@ CONTACTS = {
     "mamá": "+51 971 482 726",
     "fabián": "+51 963 183 479",
     "primita": "+51 916 799 846"
-    # agrega tus contactos aquí
 }
 
-def volume_up():
-    keyboard.send("volume up")
-    return "Subiendo volumen."
-
-
-def volume_down():
-    keyboard.send("volume down")
-    return "Bajando volumen."
-
-
-def mute_volume():
-    keyboard.send("volume mute")
-    return "Silenciando audio."
-
 
 # =========================================================
-#   MULTIMEDIA (play/pause, siguiente, anterior)
+#  ABRIR PROGRAMAS DEL SISTEMA Y JUEGOS
 # =========================================================
-def media_play_pause():
-    keyboard.send("play/pause media")
-    return "Reproduciendo o pausando contenido."
-
-
-def media_next():
-    keyboard.send("next track")
-    return "Pasando a la siguiente pista."
-
-
-def media_previous():
-    keyboard.send("previous track")
-    return "Volviendo a la pista anterior."
-
-
-# =========================================================
-#   NAVEGADOR / WEB / YOUTUBE
-# =========================================================
-def open_website(url: str):
-    """Abre una URL directa en el navegador predeterminado."""
-    if not url.startswith("http"):
-        url = "https://" + url
-    webbrowser.open(url)
-    return f"Abriendo {url}"
-
-
-def search_youtube(query: str):
-    """Busca un término específico en YouTube."""
-    q = urllib.parse.quote_plus(query)
-    url = f"https://www.youtube.com/results?search_query={q}"
-    webbrowser.open(url)
-    return f"Buscando '{query}' en YouTube."
-
-
-def search_google(query: str):
-    """Realiza una búsqueda general en Google."""
-    q = urllib.parse.quote_plus(query)
-    url = f"https://www.google.com/search?q={q}"
-    webbrowser.open(url)
-    return f"Buscando '{query}' en Google."
-
-
-# =========================================================
-#   ABRIR PROGRAMAS DEL SISTEMA
-# =========================================================
-# Mapa de "alias hablados" -> comando real del ejecutable.
-# Personaliza esta lista según los programas instalados en tu PC.
 APP_MAP = {
     "bloc de notas": "notepad" if SYSTEM == "Windows" else "gedit",
     "notepad": "notepad" if SYSTEM == "Windows" else "gedit",
@@ -173,83 +154,276 @@ APP_MAP = {
     "steam": "steam",
 }
 
-
 def open_app(app_name: str):
-    """Intenta abrir un programa en el sistema."""
     key = app_name.lower().strip()
-
-    # Caso especial: Spotify casi nunca está en el PATH de Windows.
-    # Usamos su protocolo de URI, que Windows sabe resolver directamente
-    # sin necesitar la ruta exacta del ejecutable.
     if key == "spotify":
         try:
             os.system("start spotify:")
             return "Abriendo Spotify."
         except Exception as e:
             return f"No pude abrir Spotify: {e}"
-
     command = APP_MAP.get(key, key)
     try:
         if SYSTEM == "Windows":
             os.startfile(command)  # type: ignore[attr-defined]
         elif SYSTEM == "Darwin":
             subprocess.Popen(["open", "-a", command])
-        else:  # Linux
+        else:
             subprocess.Popen([command])
         return f"Abriendo {app_name}."
     except Exception as e:
         return f"No pude abrir {app_name}: {e}"
 
-# actions.py (agregar)
 def open_steam_game(game_name: str):
-    """Abre un juego de Steam por nombre. Requiere mapear appid manualmente
-    (Steam no tiene búsqueda por nombre vía URI sin su API)."""
     key = game_name.lower().strip()
     appid = STEAM_GAMES.get(key)
     if not appid:
-        return f"No tengo el AppID de '{game_name}' guardado. Agrégalo a STEAM_GAMES en actions.py."
+        return f"No tengo el AppID de '{game_name}' guardado."
     os.system(f"start steam://rungameid/{appid}")
     return f"Abriendo {game_name} en Steam."
 
 STEAM_GAMES = {
-    # "nombre hablado": "appid"
     "counter strike 2": "730",
     "left 4 dead 2": "550",
     "tom clancy's ghost recon": "460930"
 }
-# Lista de procesos bloqueados. Agregué los que sueles usar en Steam.
+
+
+# =========================================================
+#  PROTOCOLO ANTI-BAN (SEGURIDAD EN JUEGOS)
+# =========================================================
 PROTOCOLOS_SEGUROS = [
-    "cs2.exe",           # Counter-Strike 2
-    "left4dead2.exe",    # Left 4 Dead 2
-    "grb.exe",           # Ghost Recon (Breakpoint/Wildlands)
-    "grw.exe"            # Ghost Recon Wildlands
+    "cs2.exe",           
+    "left4dead2.exe",    
+    "grb.exe",           
+    "grw.exe"            
 ]
 
 def is_game_running() -> bool:
-    """Escanea la memoria RAM para ver si hay un juego activo."""
     for proc in psutil.process_iter(['name']):
         try:
-            # Compara el nombre del proceso en minúsculas
             if proc.info['name'] and proc.info['name'].lower() in PROTOCOLOS_SEGUROS:
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
     return False
 
+def scroll_screen(direction: str, amount: int = 500):
+    if is_game_running():
+        return "Protocolo de seguridad activo. Control de mouse deshabilitado."
+    if direction.lower() == "abajo":
+        pyautogui.scroll(-amount)
+    else:
+        pyautogui.scroll(amount)
+    return f"Deslizando la pantalla hacia {direction}."
+
+def type_text(text: str, press_enter: bool = False):
+    if is_game_running():
+        return "No puedo inyectar pulsaciones de teclado en este momento. Tienes un juego competitivo en ejecución."
+    time.sleep(2.5) 
+    keyboard.write(text, delay=0.02) 
+    if press_enter:
+        keyboard.send("enter")
+    return f"He escrito: {text}"
+
+
 # =========================================================
-#   DESPACHADOR PRINCIPAL DE INTENCIONES
+#  MEMORIA SQL SERVER Y RECORDATORIOS
+# =========================================================
+def remember_fact(text: str):
+    import __main__
+    if hasattr(__main__, "app_state"):
+        try:
+            with __main__.app_state._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO MemoryLogs (LogEntry) VALUES (?)",
+                    (text,)
+                )
+                conn.commit()
+            return "Anotado correctamente en tu bitácora de memoria SQL."
+        except Exception as e:
+            return f"No pude guardar la nota en la base de datos: {e}"
+    return "Error: No encontré la conexión al cerebro principal."
+
+def set_reminder(time_str: str, task: str):
+    import __main__
+    time_str = time_str.replace(".", ":").zfill(5) 
+    rem_id = str(uuid.uuid4())[:8]
+    if hasattr(__main__, "app_state"):
+        try:
+            with __main__.app_state._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO Reminders (Id, TimeStr, TaskDescription, IsActive) VALUES (?, ?, ?, 1)",
+                    (rem_id, time_str, task)
+                )
+                conn.commit()
+            nuevo_pendiente = {"id": rem_id, "time": time_str, "task": task}
+            __main__.app_state.reminders.append(nuevo_pendiente)
+            return f"Bloque de memoria creado para las {time_str}."
+        except Exception as e:
+            return f"Hubo un error guardando el pendiente en SQL: {e}"
+    return "Error: No se encontró el banco de memoria principal."
+
+def get_all_reminders():
+    import __main__
+    if hasattr(__main__, "app_state"):
+        try:
+            with __main__.app_state._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT TimeStr, TaskDescription FROM Reminders WHERE IsActive = 1 ORDER BY TimeStr ASC")
+                rows = cursor.fetchall()
+                if not rows:
+                    return "Actualmente no tienes pendientes programados."
+                texto = "Estos son los pendientes programados:\n"
+                for row in rows:
+                    texto += f"- A las {row[0]}: {row[1]}\n"
+                return texto
+        except Exception as e:
+            return f"Error leyendo la base de datos: {e}"
+    return "Error de conexión con la base de datos."
+
+
+# =========================================================
+#  VISIÓN Y ANÁLISIS DE ARCHIVOS/DOCUMENTOS
+# =========================================================
+def analyze_screen(question: str = "Describe lo que ves en la pantalla"):
+    img_bytes = screen_capture.take_screenshot()
+    return brain.ask_about_image(img_bytes, question)
+
+def extract_text_from_file(filepath: str) -> str:
+    filepath = os.path.abspath(filepath)
+    if not os.path.exists(filepath):
+        return f"Error: No pude encontrar el archivo en la ruta {filepath}"
+    ext = filepath.split('.')[-1].lower()
+    texto_extraido = ""
+    try:
+        if ext in ['txt', 'py', 'js', 'html', 'css', 'md']:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                texto_extraido = f.read()
+        elif ext == 'pdf':
+            with open(filepath, 'rb') as f:
+                lector = PyPDF2.PdfReader(f)
+                for pagina in lector.pages:
+                    texto_extraido += pagina.extract_text() + "\n"
+        elif ext == 'docx':
+            import docx
+            doc = docx.Document(filepath)
+            for parrafo in doc.paragraphs:
+                texto_extraido += parrafo.text + "\n"
+        else:
+            return f"Error: Formato .{ext} no soportado para lectura directa."
+        return texto_extraido
+    except Exception as e:
+        return f"Error leyendo el archivo: {e}"
+
+def analyze_document(filepath: str, query: str) -> str:
+    contenido = extract_text_from_file(filepath)
+    if contenido.startswith("Error:"):
+        return contenido
+    contenido = contenido[:30000] 
+    prompt_analisis = (
+        f"Eres Y.A.R.I. Analiza el siguiente contenido de un archivo local y responde a esta consulta del usuario: '{query}'.\n\n"
+        f"CONTENIDO DEL ARCHIVO:\n{contenido}"
+    )
+    try:
+        response = brain.client.models.generate_content(
+            model=brain.config.GEMINI_MODEL_NAME,
+            contents=prompt_analisis,
+        )
+        return response.text or "El análisis finalizó, pero no generó respuesta."
+    except Exception as e:
+        return f"Error procesando el análisis con IA: {e}"
+
+def analyze_clipboard(query: str) -> str:
+    texto = pyperclip.paste()
+    if not texto.strip():
+        return "Tu portapapeles está vacío. Copia algo de texto primero."
+    texto = texto[:30000] 
+    prompt_analisis = (
+        f"Eres Y.A.R.I. Analiza el siguiente texto extraído del portapapeles "
+        f"y responde a esta consulta del usuario: '{query}'.\n\n"
+        f"TEXTO DEL PORTAPAPELES:\n{texto}"
+    )
+    try:
+        response = brain.client.models.generate_content(
+            model=brain.config.GEMINI_MODEL_NAME,
+            contents=prompt_analisis,
+        )
+        return response.text or "Análisis finalizado sin respuesta."
+    except Exception as e:
+        return f"Error procesando el portapapeles: {e}"
+
+def analyze_online_pdf(url: str, query: str) -> str:
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        pdf_file = io.BytesIO(response.content)
+        lector = PyPDF2.PdfReader(pdf_file)
+        texto_extraido = ""
+        for pagina in lector.pages:
+            texto_extraido += pagina.extract_text() + "\n"
+        texto_extraido = texto_extraido[:30000]
+        prompt = f"Analiza este PDF online y responde: '{query}'.\n\nTEXTO:\n{texto_extraido}"
+        ia_response = brain.client.models.generate_content(
+            model=brain.config.GEMINI_MODEL_NAME,
+            contents=prompt,
+        )
+        return ia_response.text
+    except Exception as e:
+        return f"No pude descargar o leer el PDF online: {e}"
+
+
+# =========================================================
+#  LECTURA MEDIA NATIVA DE WINDOWS (Sin Flask)
+# =========================================================
+async def _get_windows_media_info():
+    """Se conecta al Media Transport de Windows para leer la pista actual."""
+    from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as MediaManager
+    sessions = await MediaManager.request_async()
+    current_session = sessions.get_current_session()
+    
+    if current_session:
+        info = await current_session.try_get_media_properties_async()
+        title = info.title
+        artist = info.artist
+        
+        if title and artist:
+            return f"'{title}' de {artist}"
+        elif title:
+            return f"'{title}'"
+    return None
+
+def comment_on_music() -> str:
+    """Extrae la música nativa y genera una crítica con personalidad."""
+    try:
+        song_info = asyncio.run(_get_windows_media_info())
+        if not song_info:
+            return "No detecto ninguna música reproduciéndose en el sistema en este momento."
+    except Exception as e:
+        return f"Error leyendo los controles multimedia de Windows: {e}"
+        
+    prompt_opinion = (
+        f"Eres Y.A.R.I. Franco está escuchando la canción {song_info}. "
+        "Dame una opinión MUY corta (1 o 2 oraciones máximas), amigable, con tu personalidad tecnológica, "
+        "y un toque de sarcasmo o humor sobre su gusto musical actual."
+    )
+    
+    try:
+        response = brain.client.models.generate_content(
+            model=brain.config.GEMINI_MODEL_NAME,
+            contents=prompt_opinion,
+        )
+        return response.text.replace("*", "").replace("#", "")
+    except Exception:
+        return f"Estás escuchando {song_info}, ¡excelente elección para mantener el ritmo!"
+
+
+# =========================================================
+#  DESPACHADOR PRINCIPAL DE INTENCIONES
 # =========================================================
 def execute_intent(intent: dict) -> str:
-    """
-    Recibe un diccionario con la forma:
-        {"action": "open_website", "params": {"url": "github.com"}}
-    y ejecuta la función correspondiente. Devuelve un mensaje de
-    confirmación en texto (para ser leído por el TTS si se desea).
-
-    Si la acción es "answer_question", significa que Gemini decidió
-    responder directamente con texto (no hay automatización que ejecutar);
-    en ese caso el propio texto de la respuesta ya viene en intent["params"]["text"].
-    """
     action = intent.get("action")
     params = intent.get("params", {}) or {}
 
@@ -274,199 +448,13 @@ def execute_intent(intent: dict) -> str:
         "remember_fact": lambda: remember_fact(params.get("text", "")),
         "set_reminder": lambda: set_reminder(params.get("time", ""), params.get("task", "")),
         "get_reminders": lambda: get_all_reminders(),
-        "analyze_document": lambda: analyze_document(params.get("filepath", ""), params.get("query", ""))
+        "analyze_document": lambda: analyze_document(params.get("filepath", ""), params.get("query", "")),
+        "analyze_clipboard": lambda: analyze_clipboard(params.get("query", "")),
+        "analyze_online_pdf": lambda: analyze_online_pdf(params.get("url", ""), params.get("query", "")),
+        "comment_on_music": lambda: comment_on_music(),
     }
-
+        
     handler = dispatch.get(action)
     if handler is None:
         return "No reconocí esa acción."
     return handler()
-
-def analyze_screen(question: str = "Describe lo que ves en la pantalla"):
-    """Toma una captura y se la manda a Gemini junto a una pregunta."""
-    img_bytes = screen_capture.take_screenshot()
-    return brain.ask_about_image(img_bytes, question)
-
-def type_text(text: str, press_enter: bool = False):
-    """Escribe un texto como si fueras tú tecleando."""
-    # Pausa pequeña para que sueltes la tecla de hablar antes de que él escriba
-    time.sleep(2.5) 
-    
-    keyboard.write(text, delay=0.02) # delay le da un efecto de escritura natural
-    
-    if press_enter:
-        keyboard.send("enter")
-        
-    return f"He escrito: {text}"
-
-def remember_fact(text: str):
-    """Guarda un dato directamente en la tabla MemoryLogs de SQL Server."""
-    import __main__
-    
-    if hasattr(__main__, "app_state"):
-        try:
-            with __main__.app_state._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO MemoryLogs (LogEntry) VALUES (?)",
-                    (text,)
-                )
-                conn.commit()
-            return "Anotado correctamente en tu bitácora de memoria SQL."
-        except Exception as e:
-            return f"No pude guardar la nota en la base de datos: {e}"
-            
-    return "Error: No encontré la conexión al cerebro principal."
-
-
-def set_reminder(time_str: str, task: str):
-    """Guarda una alarma en SQL Server y sincroniza la RAM para la interfaz."""
-    import __main__
-    import uuid
-    
-    time_str = time_str.replace(".", ":").zfill(5) 
-    rem_id = str(uuid.uuid4())[:8]
-    
-    if hasattr(__main__, "app_state"):
-        try:
-            # 1. Insertamos en la Base de Datos
-            with __main__.app_state._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO Reminders (Id, TimeStr, TaskDescription, IsActive) VALUES (?, ?, ?, 1)",
-                    (rem_id, time_str, task)
-                )
-                conn.commit()
-                
-            # 2. Sincronizamos la RAM para que el frontend lo dibuje al instante
-            nuevo_pendiente = {
-                "id": rem_id,
-                "time": time_str,
-                "task": task
-            }
-            __main__.app_state.reminders.append(nuevo_pendiente)
-            
-            return f"Bloque de memoria creado para las {time_str}."
-        except Exception as e:
-            return f"Hubo un error guardando el pendiente en SQL: {e}"
-            
-    return "Error: No se encontró el banco de memoria principal."
-
-
-def get_all_reminders():
-    """Lee los pendientes directamente desde SQL Server."""
-    import __main__
-    
-    if hasattr(__main__, "app_state"):
-        try:
-            with __main__.app_state._get_connection() as conn:
-                cursor = conn.cursor()
-                # Solo traemos los que están activos (IsActive = 1)
-                cursor.execute("SELECT TimeStr, TaskDescription FROM Reminders WHERE IsActive = 1 ORDER BY TimeStr ASC")
-                rows = cursor.fetchall()
-                
-                if not rows:
-                    return "Actualmente no tienes pendientes programados."
-                
-                texto = "Estos son los pendientes programados:\n"
-                for row in rows:
-                    texto += f"- A las {row[0]}: {row[1]}\n"
-                return texto
-        except Exception as e:
-            return f"Error leyendo la base de datos: {e}"
-            
-    return "Error de conexión con la base de datos."
-
-def extract_text_from_file(filepath: str) -> str:
-    """Extrae texto de archivos TXT, PY, PDF o DOCX."""
-    # Expandimos rutas relativas si es necesario
-    filepath = os.path.abspath(filepath)
-    
-    if not os.path.exists(filepath):
-        return f"Error: No pude encontrar el archivo en la ruta {filepath}"
-
-    ext = filepath.split('.')[-1].lower()
-    texto_extraido = ""
-
-    try:
-        if ext in ['txt', 'py', 'js', 'html', 'css', 'md']:
-            # Archivos de código o texto plano
-            with open(filepath, 'r', encoding='utf-8') as f:
-                texto_extraido = f.read()
-                
-        elif ext == 'pdf':
-            # Archivos PDF
-            import PyPDF2
-            with open(filepath, 'rb') as f:
-                lector = PyPDF2.PdfReader(f)
-                for pagina in lector.pages:
-                    texto_extraido += pagina.extract_text() + "\n"
-                    
-        elif ext == 'docx':
-            # Archivos Word
-            import docx
-            doc = docx.Document(filepath)
-            for parrafo in doc.paragraphs:
-                texto_extraido += parrafo.text + "\n"
-        else:
-            return f"Error: Formato .{ext} no soportado para lectura directa."
-            
-        return texto_extraido
-    except Exception as e:
-        return f"Error leyendo el archivo: {e}"
-
-def analyze_document(filepath: str, query: str) -> str:
-    """Extrae el texto y le pide a Gemini que lo analice según la consulta."""
-    import brain # Importamos el cerebro para procesar
-    
-    contenido = extract_text_from_file(filepath)
-    
-    if contenido.startswith("Error:"):
-        return contenido
-        
-    # Si el archivo es muy grande, lo limitamos para no saturar la memoria de la API
-    contenido = contenido[:30000] 
-    
-    # Creamos un prompt específico para análisis de documentos
-    prompt_analisis = (
-        f"Eres Y.A.R.I. Analiza el siguiente contenido de un archivo local y responde a esta consulta del usuario: '{query}'.\n\n"
-        f"CONTENIDO DEL ARCHIVO:\n{contenido}"
-    )
-    
-    # Usamos una llamada directa a Gemini para obtener la respuesta experta
-    try:
-        response = brain.client.models.generate_content(
-            model=brain.config.GEMINI_MODEL_NAME,
-            contents=prompt_analisis,
-        )
-        return response.text or "El análisis finalizó, pero no generó respuesta."
-    except Exception as e:
-        return f"Error procesando el análisis con IA: {e}"
-
-def scroll_screen(direction: str, amount: int = 500):
-    """Hace scroll, pero solo si es seguro."""
-    if is_game_running():
-        return "Protocolo de seguridad activo. Control de mouse deshabilitado mientras juegas para evitar sanciones."
-        
-    if direction.lower() == "abajo":
-        pyautogui.scroll(-amount)
-    else:
-        pyautogui.scroll(amount)
-    return f"Deslizando la pantalla hacia {direction}."
-    
-
-def type_text(text: str, press_enter: bool = False):
-    """Escribe un texto, pero verifica el entorno primero."""
-    if is_game_running():
-        return "No puedo inyectar pulsaciones de teclado en este momento. Tienes un juego competitivo en ejecución."
-        
-    import time
-    time.sleep(2.5) 
-    
-    import keyboard
-    keyboard.write(text, delay=0.02) 
-    
-    if press_enter:
-        keyboard.send("enter")
-        
-    return f"He escrito: {text}"
