@@ -495,26 +495,64 @@ def append_to_file(filepath: str, content: str) -> str:
 
 
 def analyze_camera(question: str = "Describe lo que ves") -> str:
-    """Le pide al HUD (JavaScript) que tome un frame de la cámara web activa."""
+    """Toma un frame de la cámara web y lo analiza CON contexto de la conversación anterior."""
     import __main__
     import base64
     import brain
     
     try:
-        # Verificamos que la ventana web exista
+        # 1. Extraemos los últimos 4 mensajes de tu memoria SQL (Corto Plazo)
+        contexto_chat = ""
+        if hasattr(__main__, "app_state"):
+            historial = __main__.app_state.conversation_history[-4:]
+            if historial:
+                contexto_chat = "\n[HISTORIAL RECIENTE PARA DARTE CONTEXTO]:\n"
+                for msg in historial:
+                    rol = "Humano" if msg["role"] == "user" else "Y.A.R.I"
+                    contexto_chat += f"{rol}: {msg['text']}\n"
+
+        # 2. Le pasamos el contexto a la IA junto con la pregunta
+        pregunta_con_memoria = f"{contexto_chat}\n[PREGUNTA ACTUAL DEL USUARIO]: {question}"
+
+        # 3. Tomamos la foto
         if hasattr(__main__, "_webview_window") and __main__._webview_window:
-            # Ejecutamos la función de JavaScript y recibimos la foto en texto Base64
             base64_img = __main__._webview_window.evaluate_js('takeSnapshot()')
             
             if base64_img:
-                # Convertimos el texto a bytes puros y se los damos a Gemini
                 img_bytes = base64.b64decode(base64_img)
-                return brain.ask_about_image(img_bytes, question)
+                return brain.ask_about_image(img_bytes, pregunta_con_memoria)
                 
         return "Error: No pude comunicarme con el sensor óptico del HUD."
     except Exception as e:
         return f"Error procesando la imagen de la cámara: {e}"
 
+def run_system_diagnostic() -> str:
+    """Extrae la telemetría del PC y hace que la IA genere un reporte hablado."""
+    import system_stats
+    import brain
+    
+    try:
+        # Obtenemos los datos crudos de los sensores
+        datos_sensores = system_stats.get_full_diagnostic()
+        
+        prompt_diagnostico = (
+            "Eres Y.A.R.I. Analiza esta telemetría del PC de Franco. "
+            "Hazle un reporte de voz directo y experto. Menciona cómo está el nivel de la CPU, la RAM, "
+            "la temperatura de la gráfica, y avísale qué aplicaciones en segundo plano le están "
+            "consumiendo más recursos. Sé conversacional y advierte si algo parece muy alto.\n\n"
+            f"DATOS:\n{datos_sensores}"
+        )
+        
+        # Le pasamos los datos a su red neuronal
+        response = brain.client.models.generate_content(
+            model=brain.config.GEMINI_MODEL_NAME,
+            contents=prompt_diagnostico,
+        )
+        # Limpiamos formatos raros para que la voz fluya bien
+        return response.text.replace("*", "").replace("#", "")
+        
+    except Exception as e:
+        return f"Error en los sensores del sistema: {e}"
 # =========================================================
 #  DESPACHADOR PRINCIPAL DE INTENCIONES
 # =========================================================
@@ -555,7 +593,7 @@ def execute_intent(intent: dict) -> str:
         "modify_file": lambda: modify_file(params.get("filepath", "nota.txt"), params.get("content", "")),
         "append_to_file": lambda: append_to_file(params.get("filepath", "nota.txt"), params.get("content", "")),
         "analyze_camera": lambda: analyze_camera(params.get("question", "Describe lo que ves")),
-
+        "run_system_diagnostic": lambda: run_system_diagnostic(),
     }
         
     handler = dispatch.get(action)

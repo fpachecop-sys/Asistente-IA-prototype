@@ -42,6 +42,22 @@ class AppState:
             print(f"Error conectando a YariDB (Chat): {e}")
         return history
 
+    def get_long_term_memory(self):
+        """Extrae toda la bitácora de MemoryLogs para inyectarla en el cerebro de Y.A.R.I."""
+        memory_text = ""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT LogEntry FROM MemoryLogs ORDER BY CreatedAt ASC")
+                rows = cursor.fetchall()
+                if rows:
+                    memory_text = "\n[MEMORIA A LARGO PLAZO DE FRANCO]:\n"
+                    for row in rows:
+                        memory_text += f"- {row[0]}\n"
+        except Exception as e:
+            print(f"Error conectando a MemoryLogs: {e}")
+        return memory_text
+
     def _load_reminders(self):
         """Extrae los pendientes activos desde SQL Server al arrancar."""
         loaded_reminders = []

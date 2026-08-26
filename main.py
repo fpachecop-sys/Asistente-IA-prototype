@@ -90,6 +90,7 @@ def _process_user_text(user_text: str) -> dict:
         "modify_file",
         "append_to_file",
         "analyze_camera",
+        "run_system_diagnostic",
     ]
     
     # 🛑 CORRECCIÓN: Si es una pregunta normal, NO sumamos las frases

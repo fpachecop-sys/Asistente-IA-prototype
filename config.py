@@ -60,8 +60,6 @@ TTS_USE_EDGE = True
 # Ejecuta `edge-tts --list-voices | findstr es-` (Windows) para ver más.
 TTS_EDGE_VOICE = "es-MX-DaliaNeural"
 
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "n4GNpJP6Y2Nd09pDtetA")# Puedes poner "Rachel", "Charlie", "Callum", o el ID exacto de una voz de su librería.
-ELEVENLABS_VOICE = "n4GNpJP6Y2Nd09pDtetA"
 # Ajustes de velocidad y volumen en formato de porcentaje relativo
 # que exige la librería edge-tts, ej: "+15%", "-10%", "+0%"
 TTS_EDGE_RATE = "+12%"

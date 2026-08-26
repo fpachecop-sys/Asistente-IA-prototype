@@ -79,6 +79,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "modify_file": params: {{"filepath": "<nombre_del_archivo, ej: script.py o notas.txt>", "content": "<código o texto completo a guardar>"}} (Úsalo SIEMPRE que el usuario te pida crear un archivo, guardar un código físico, o escribir algo en un bloc de notas en la PC. Escribe TODO el contenido final dentro de 'content').
 - "append_to_file": params: {{"filepath": "<nombre_del_archivo.txt>", "content": "<texto a agregar>"}} (Úsalo EXCLUSIVAMENTE cuando el usuario te pida AGREGAR, sumar o añadir más información a un archivo o bloc de notas que ya existe, para no borrar lo anterior).
 - "analyze_camera": params: {{"question": "<pregunta específica>"}} (Úsala EXCLUSIVAMENTE cuando el usuario te pida explícitamente ver a través de su cámara, mirar qué tiene en la mano, observar su entorno físico o cómo se ve él mismo. No confundir con 'analyze_screen').
+- "run_system_diagnostic": params: {{}} (Úsala SIEMPRE que el usuario te pregunte por el estado de su PC, qué aplicaciones están consumiendo memoria, temperaturas de hardware, salud del sistema o diagnósticos de rendimiento).
 
 Reglas importantes:
 1. "spoken_response" debe ser la frase exacta que leerá el motor de voz.
@@ -159,8 +160,25 @@ def get_intent_from_text(user_text: str) -> dict:
     history_text = ""
     for turn in _chat_history[-MAX_HISTORY_TURNS:]:
         history_text += f"Usuario: {turn['user']}\n{config.ASSISTANT_NAME} (JSON previo): {turn['assistant']}\n"
+    
     contexto = _build_context()
-    full_prompt = f"{SYSTEM_PROMPT}\n\n{EJEMPLOS_DE_REFERENCIA}\n\n{contexto}\n{history_text}\nUsuario: {user_text}\n{config.ASSISTANT_NAME}:"
+
+    # =================================================================
+    # 🧠 AQUÍ INYECTAMOS LA MEMORIA A LARGO PLAZO (SQL)
+    # =================================================================
+    import __main__
+    
+    memoria_sql = ""
+    if hasattr(__main__, "app_state"):
+        memoria_sql = __main__.app_state.get_long_term_memory()
+
+    # Fusionamos el prompt original con todos tus recuerdos de SQL
+    prompt_dinamico = SYSTEM_PROMPT + "\n" + memoria_sql
+    # =================================================================
+
+    # FÍJATE AQUÍ: Ahora usamos 'prompt_dinamico' en lugar de SYSTEM_PROMPT
+    full_prompt = f"{prompt_dinamico}\n\n{EJEMPLOS_DE_REFERENCIA}\n\n{contexto}\n{history_text}\nUsuario: {user_text}\n{config.ASSISTANT_NAME}:"
+    
     raw_text = ""
     try:
         response = client.models.generate_content(
@@ -200,20 +218,17 @@ def get_intent_from_text(user_text: str) -> dict:
 
 
 def ask_about_image(image_bytes: bytes, question: str) -> str:
-    # 🛑 NUEVO PROMPT EXPANDIDO: Múltiples contextos (Escritorio, Juegos, Texto)
     vision_prompt = (
         "Eres Y.A.R.I., un asistente de análisis visual avanzado. "
-        "Analiza esta imagen con extrema precisión, adaptando tu cerebro a lo que ves:\n\n"
-        "1. ESCRITORIO O SOFTWARE: Si ves una interfaz o cuadrícula de iconos, y el usuario pregunta "
-        "por ubicaciones (arriba, abajo, izquierda, derecha), lee mentalmente fila por fila y columna "
-        "por columna. No adivines ni aproximes diagonales.\n"
-        "2. VIDEOJUEGOS: Si detectas que es un juego, identifica elementos del HUD (salud, minimapa, armas). "
-        "Reconoce y nombra entidades específicas si las conoces (ej. tipos de infectados, monstruos, vehículos) "
-        "y entiende la espacialidad 3D respecto a la mira del jugador.\n"
-        "3. PROCESAMIENTO DE TEXTO (OCR): Si el usuario pide leer, ordenar, traducir o modificar un texto "
-        "que aparece en pantalla, extrae primero las palabras exactas de la imagen y luego aplica la instrucción solicitada.\n\n"
-        "Ve directo al grano, sin rodeos, con un tono experto, analítico y conversacional. "
-        f"Instrucción del usuario: {question}"
+        "Analiza esta imagen con extrema precisión, adaptando tu cerebro a lo que ves y leyendo el historial reciente si te lo proporcionan:\n\n"
+        "1. ESCRITORIO O SOFTWARE: Lee fila por fila y columna por columna.\n"
+        "2. VIDEOJUEGOS: Identifica elementos del HUD y reconoce entidades en 3D.\n"
+        "3. PROCESAMIENTO DE TEXTO (OCR): Extrae primero las palabras exactas de la imagen.\n"
+        "4. NUTRICIÓN Y DIETA: Si el usuario te muestra su comida, actúa como un experto en nutrición y recomposición corporal. "
+        "Calcula y desglosa los macronutrientes (priorizando los gramos de proteína) de forma directa y tabular. "
+        "NO vuelvas a hacer una descripción literaria del plato si en el historial reciente ya lo hiciste.\n\n"
+        "Ve directo al grano, sin rodeos, con un tono experto. "
+        f"Instrucción: {question}"
     )
     
     try:
