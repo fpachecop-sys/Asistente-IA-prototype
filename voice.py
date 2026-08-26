@@ -22,7 +22,7 @@ import speech_recognition as sr
 import pyttsx3
 import edge_tts
 import pygame
-
+from faster_whisper import WhisperModel # <-- NUEVO IMPORT
 import config
 
 # Inicializamos el mezclador de audio de pygame una sola vez
@@ -32,6 +32,8 @@ pygame.mixer.init()
 # Reconocedor de voz
 # ---------------------------------------------------------
 _recognizer = sr.Recognizer()
+_whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
+print("Motor auditivo listo.")
 
 # Configuración de grabación directa en memoria
 CHUNK = 1024
@@ -96,11 +98,36 @@ class PushToTalkRecorder:
 
 
 def transcribe_audio_data(audio_data) -> str:
+    """Convierte el audio a texto usando Inteligencia Artificial Contextual (Whisper)."""
     if not audio_data:
         return ""
+    
     try:
-        return _recognizer.recognize_google(audio_data, language=config.STT_LANGUAGE)
-    except Exception:
+        # 1. Extraemos los bytes puros de la grabación
+        wav_bytes = audio_data.get_wav_data()
+        
+        # 2. Creamos un archivo temporal invisible
+        temp_wav = os.path.join(tempfile.gettempdir(), f"yari_listen_{uuid.uuid4().hex}.wav")
+        with open(temp_wav, "wb") as f:
+            f.write(wav_bytes)
+
+        # 3. Whisper analiza el audio (beam_size=5 le da mayor precisión de contexto)
+        segments, info = _whisper_model.transcribe(temp_wav, beam_size=5, language="es")
+        
+        texto_completo = ""
+        for segment in segments:
+            texto_completo += segment.text + " "
+
+        # 4. Borramos la huella temporal
+        try:
+            os.remove(temp_wav)
+        except Exception:
+            pass
+
+        return texto_completo.strip()
+        
+    except Exception as e:
+        print(f"[Error Whisper]: {e}")
         return ""
 
 

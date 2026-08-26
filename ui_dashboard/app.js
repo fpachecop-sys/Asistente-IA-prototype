@@ -60,6 +60,10 @@ function appendMessage(role, text) {
 }
 
 function setOrbState(state) {
+  // Evitar que la interfaz se actualice si ya está en el estado correcto
+  if (orbIndicator.dataset.state === state) return;
+  orbIndicator.dataset.state = state;
+
   orbIndicator.className = "orb-dot " + (state === "idle" ? "" : state);
   orbLabel.textContent = STATE_LABELS[state] || "En reposo";
 
@@ -69,6 +73,14 @@ function setOrbState(state) {
     if (scanline) scanline.classList.remove('active');
   }
 }
+
+// NUEVO: Radar de sincronización en tiempo real con Python
+setInterval(async () => {
+  if (window.pywebview && window.pywebview.api && window.pywebview.api.get_orb_state) {
+    const state = await window.pywebview.api.get_orb_state();
+    if (state) setOrbState(state);
+  }
+}, 250);
 
 // ---------------------------------------------------------
 // Envío de mensajes
@@ -259,13 +271,21 @@ async function initCamera() {
 // Inicializar la cámara apenas cargue la página
 window.addEventListener('DOMContentLoaded', initCamera);
 // Función para que Python pueda pedir una foto sin apagar la cámara web
+// Función para que Python pueda pedir una foto sin apagar la cámara web
 function takeSnapshot() {
   const video = document.getElementById('camera-feed');
   if (!video || !video.videoWidth) return null;
   
-  // Encender el escáner visualmente al tomar la foto
+  // Encender el escáner visualmente
   const scanline = document.querySelector('.camera-scanline');
-  if (scanline) scanline.classList.add('active');
+  if (scanline) {
+    scanline.classList.add('active');
+    
+    // APAGADO AUTOMÁTICO: Quitamos el láser 2.5 segundos después de tomar la foto
+    setTimeout(() => {
+      scanline.classList.remove('active');
+    }, 2500);
+  }
   
   const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;

@@ -53,6 +53,10 @@ class Bridge:
         }
     def get_reminders(self):
         return app_state.reminders
+    
+    def get_orb_state(self):
+        # Le dice al panel web en qué estado se encuentra la IA
+        return getattr(app_state, "current_state", "idle")
 
 
 def _restore_dashboard_from_orb():

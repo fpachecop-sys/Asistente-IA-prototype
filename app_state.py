@@ -75,6 +75,7 @@ class AppState:
             print(f"Error guardando mensaje en BD: {e}")
 
     def set_orb_state(self, state: str):
+        self.current_state = state  # <-- NUEVO: Guardamos el estado actual en memoria
         self.orb_commands.put(f"state:{state}")
 
     def show_orb(self):
