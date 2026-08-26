@@ -82,7 +82,9 @@ def _process_user_text(user_text: str) -> dict:
         "analyze_document", 
         "analyze_online_pdf", 
         "comment_on_music", 
-        "get_reminders"
+        "get_reminders",
+        "modify_file"
+        "append_to_file"
     ]
     
     # 🛑 CORRECCIÓN: Si es una pregunta normal, NO sumamos las frases

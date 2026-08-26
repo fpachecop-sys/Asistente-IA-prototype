@@ -75,6 +75,8 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "click_on_element": params: {{"description": "<qué elemento visual, ej. 'el botón de enviar', 'la pestaña de VS Code'>"}} (Úsalo para hacer clic en algo específico que ves en pantalla).
 - "move_mouse_to": params: {{"description": "<elemento>"}}.
 - "click_and_type": params: {{"description": "<caja de texto o chat donde escribir, ej. 'campo de mensaje de WhatsApp Web', 'editor de VS Code'>", "text": "<qué escribir>", "press_enter": <true/false>}}.
+- "modify_file": params: {{"filepath": "<nombre_del_archivo, ej: script.py o notas.txt>", "content": "<código o texto completo a guardar>"}} (Úsalo SIEMPRE que el usuario te pida crear un archivo, guardar un código físico, o escribir algo en un bloc de notas en la PC. Escribe TODO el contenido final dentro de 'content').
+- "append_to_file": params: {{"filepath": "<nombre_del_archivo.txt>", "content": "<texto a agregar>"}} (Úsalo EXCLUSIVAMENTE cuando el usuario te pida AGREGAR, sumar o añadir más información a un archivo o bloc de notas que ya existe, para no borrar lo anterior).
 
 Reglas importantes:
 1. "spoken_response" debe ser la frase exacta que leerá el motor de voz.

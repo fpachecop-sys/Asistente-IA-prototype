@@ -437,6 +437,51 @@ def generate_code(code: str, language: str = "", explanation: str = ""):
     texto = f"{explanation}\n\n```{language}\n{code}\n```"
     return texto
 
+def modify_file(filepath: str, content: str) -> str:
+    """Crea o sobreescribe un archivo local forzando la ruta al escritorio real del usuario."""
+    import os
+    
+    # 1. Le quitamos cualquier ruta falsa que Gemini haya inventado (ej. C:\Users\Franco\...)
+    # y nos quedamos solo con el nombre del archivo (ej. ideas.txt)
+    filename = os.path.basename(filepath)
+    
+    # 2. Obtenemos el usuario real de Windows (ej. Administrator)
+    user_profile = os.environ.get('USERPROFILE', os.path.expanduser("~"))
+    escritorio = os.path.join(user_profile, "Desktop")
+    
+    # 3. Soporte por si tu PC usa el escritorio de OneDrive
+    if not os.path.exists(escritorio):
+        escritorio = os.path.join(user_profile, "OneDrive", "Desktop")
+        
+    ruta_final = os.path.join(escritorio, filename)
+    
+    try:
+        with open(ruta_final, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return f"Éxito: Archivo '{filename}' guardado físicamente."
+    except Exception as e:
+        return f"Error crítico guardando el archivo: {e}"
+
+def append_to_file(filepath: str, content: str) -> str:
+    """Agrega texto al final de un archivo existente en el escritorio sin borrar lo anterior."""
+    import os
+    filename = os.path.basename(filepath)
+    user_profile = os.environ.get('USERPROFILE', os.path.expanduser("~"))
+    escritorio = os.path.join(user_profile, "Desktop")
+    
+    if not os.path.exists(escritorio):
+        escritorio = os.path.join(user_profile, "OneDrive", "Desktop")
+        
+    ruta_final = os.path.join(escritorio, filename)
+    
+    try:
+        # La 'a' significa Append (Añadir al final)
+        with open(ruta_final, 'a', encoding='utf-8') as f:
+            f.write("\n" + content)
+        return f"Éxito: Se agregaron las nuevas líneas al archivo '{filename}'."
+    except Exception as e:
+        return f"Error crítico al agregar texto al archivo: {e}"
+    
 # =========================================================
 #  DESPACHADOR PRINCIPAL DE INTENCIONES
 # =========================================================
@@ -474,6 +519,8 @@ def execute_intent(intent: dict) -> str:
         "click_on_element": lambda: vision_control.click_on(params.get("description", "")),
         "move_mouse_to": lambda: vision_control.move_to(params.get("description", "")),
         "click_and_type": lambda: vision_control.click_and_type(params.get("description", ""), params.get("text", ""), params.get("press_enter", False)),
+        "modify_file": lambda: modify_file(params.get("filepath", "nota.txt"), params.get("content", "")),
+        "append_to_file": lambda: append_to_file(params.get("filepath", "nota.txt"), params.get("content", "")),
         
     }
         
