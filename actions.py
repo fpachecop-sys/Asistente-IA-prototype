@@ -324,7 +324,7 @@ def analyze_document(filepath: str, query: str) -> str:
         return contenido
     contenido = contenido[:30000] 
     prompt_analisis = (
-        f"Eres Y.A.R.I. Analiza el siguiente contenido de un archivo local y responde a esta consulta del usuario: '{query}'.\n\n"
+        f"Analiza el siguiente contenido de un archivo local y responde a esta consulta del usuario: '{query}'.\n\n"
         f"CONTENIDO DEL ARCHIVO:\n{contenido}"
     )
     try:
@@ -341,9 +341,11 @@ def analyze_clipboard(query: str) -> str:
     if not texto.strip():
         return "Tu portapapeles está vacío. Copia algo de texto primero."
     texto = texto[:30000] 
+    # Reemplaza el prompt_analisis de analyze_clipboard por este:
     prompt_analisis = (
-        f"Eres Y.A.R.I. Analiza el siguiente texto extraído del portapapeles "
-        f"y responde a esta consulta del usuario: '{query}'.\n\n"
+        f"Analiza este texto extraído del portapapeles y responde a: '{query}'.\n"
+        "REGLA ESTRICTA: NO saludes, NO te presentes, NO digas 'Aquí tienes el resumen'. "
+        "Ve DIRECTO a la información solicitada, como un experto.\n\n"
         f"TEXTO DEL PORTAPAPELES:\n{texto}"
     )
     try:
