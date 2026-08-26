@@ -295,3 +295,42 @@ function takeSnapshot() {
   // Retorna la foto comprimida al 50% de calidad
   return canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
 }
+
+// Función para recibir mensajes en tiempo real desde Python
+function appendMessageToChat(role, text) {
+  const chatContainer = document.getElementById('chat-messages');
+  if (!chatContainer) return;
+
+  // Crear el contenedor del mensaje
+  const msgDiv = document.createElement('div');
+  msgDiv.className = role === 'user' ? 'msg msg-user' : 'msg msg-assistant';
+
+  // Crear la burbuja de texto
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+
+  // Crear la hora actual
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'msg-time';
+  const now = new Date();
+  timeSpan.textContent = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+  // Ensamblar e inyectar
+  msgDiv.appendChild(bubble);
+  msgDiv.appendChild(timeSpan);
+  chatContainer.appendChild(msgDiv);
+
+  // Hacer auto-scroll hasta el fondo para ver el mensaje nuevo
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+// Gatillo para enviar el volumen de voz a Python en tiempo real
+const ttsVolume = document.getElementById('tts-volume-slider');
+if (ttsVolume) {
+  ttsVolume.addEventListener('input', (e) => {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.set_voice_volume) {
+      window.pywebview.api.set_voice_volume(e.target.value);
+    }
+  });
+}
+

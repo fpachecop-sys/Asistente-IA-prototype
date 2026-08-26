@@ -508,3 +508,59 @@ body {
   0% { top: -10%; }
   100% { top: 110%; }
 }
+
+/* ---------- CONTROL DE VOLUMEN DE VOZ (EXPANDIBLE) ---------- */
+.tts-volume-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 4px;
+  padding: 0 8px;
+  height: 30px;
+  width: 30px; /* Solo muestra el ícono al inicio */
+  overflow: hidden;
+  cursor: pointer;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+  margin-right: 10px;
+}
+
+.tts-volume-wrapper:hover {
+  width: 130px; /* Se expande para revelar el control */
+  background: rgba(0, 229, 255, 0.15);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.tts-volume-icon {
+  color: #00e5ff;
+  min-width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tts-volume-slider {
+  -webkit-appearance: none;
+  width: 75px;
+  height: 2px;
+  background: rgba(0, 229, 255, 0.4);
+  outline: none;
+  margin-left: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tts-volume-wrapper:hover .tts-volume-slider {
+  opacity: 1; /* Hace visible la barra al expandirse */
+}
+
+.tts-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00e5ff;
+  cursor: pointer;
+  box-shadow: 0 0 8px #00e5ff;
+}

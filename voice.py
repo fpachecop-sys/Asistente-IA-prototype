@@ -149,6 +149,16 @@ def stop_audio():
     except Exception:
         pass
 
+def change_tts_volume(percent: int):
+    """Ajusta matemáticamente el volumen de salida de voz de 0.0 a 1.0"""
+    import pygame
+    try:
+        # Convertimos el porcentaje (0-100) a decimal (0.0 - 1.0) para Pygame
+        vol_float = max(0.0, min(1.0, percent / 100.0))
+        pygame.mixer.music.set_volume(vol_float)
+    except Exception as e:
+        print(f"No pude ajustar el mezclador de audio: {e}")
+
 
 # ---------------------------------------------------------
 # Texto a voz (TTS) - Edge TTS con fallback a pyttsx3

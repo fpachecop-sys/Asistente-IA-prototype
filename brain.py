@@ -80,6 +80,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "append_to_file": params: {{"filepath": "<nombre_del_archivo.txt>", "content": "<texto a agregar>"}} (Úsalo EXCLUSIVAMENTE cuando el usuario te pida AGREGAR, sumar o añadir más información a un archivo o bloc de notas que ya existe, para no borrar lo anterior).
 - "analyze_camera": params: {{"question": "<pregunta específica>"}} (Úsala EXCLUSIVAMENTE cuando el usuario te pida explícitamente ver a través de su cámara, mirar qué tiene en la mano, observar su entorno físico o cómo se ve él mismo. No confundir con 'analyze_screen').
 - "run_system_diagnostic": params: {{}} (Úsala SIEMPRE que el usuario te pregunte por el estado de su PC, qué aplicaciones están consumiendo memoria, temperaturas de hardware, salud del sistema o diagnósticos de rendimiento).
+- "search_web_and_summarize": params: {{"query": "<término corregido a buscar>"}} (Úsala SIEMPRE que el usuario pregunte datos de actualidad o noticias. IMPORTANTE: Si la transcripción tiene errores fonéticos obvios como "champions leech" o "liga pero nada", debes DEDUCIR y CORRIGIR el texto a "Champions League" o "Liga Peruana" ANTES de enviarlo al parámetro query).
 
 Reglas importantes:
 1. "spoken_response" debe ser la frase exacta que leerá el motor de voz.

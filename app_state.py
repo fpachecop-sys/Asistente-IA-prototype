@@ -77,7 +77,7 @@ class AppState:
         return loaded_reminders
 
     def add_message(self, role: str, text: str):
-        """Registra un mensaje en la memoria local y lo inserta en SQL Server."""
+        """Registra un mensaje en memoria local, SQL Server y lo dibuja en el HUD web."""
         self.conversation_history.append({"role": role, "text": text})
         try:
             with self._get_connection() as conn:
@@ -89,6 +89,21 @@ class AppState:
                 conn.commit()
         except Exception as e:
             print(f"Error guardando mensaje en BD: {e}")
+
+        # --- NUEVO: Sincronización en tiempo real con la interfaz Web ---
+        import __main__
+        import json
+        
+        # Verificamos si la ventana web está abierta y activa
+        if hasattr(__main__, "_webview_window") and __main__._webview_window:
+            # Envolvemos el texto en JSON para evitar que las comillas rompan el código JS
+            safe_text = json.dumps(text)
+            js_code = f"if (typeof appendMessageToChat === 'function') {{ appendMessageToChat('{role}', {safe_text}); }}"
+            try:
+                # Inyectamos el comando directamente al cerebro del navegador
+                __main__._webview_window.evaluate_js(js_code)
+            except Exception:
+                pass
 
     def set_orb_state(self, state: str):
         self.current_state = state  # <-- NUEVO: Guardamos el estado actual en memoria

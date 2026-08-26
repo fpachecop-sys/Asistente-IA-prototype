@@ -58,6 +58,15 @@ class Bridge:
         # Le dice al panel web en qué estado se encuentra la IA
         return getattr(app_state, "current_state", "idle")
 
+    def set_voice_volume(self, volume_str):
+        """Recibe el porcentaje del HUD y ajusta el volumen de la IA."""
+        try:
+            import voice
+            vol_int = int(volume_str)
+            voice.change_tts_volume(vol_int)
+        except Exception as e:
+            print(f"Error cambiando volumen de voz: {e}")
+
 
 def _restore_dashboard_from_orb():
     """Llamado desde ui.py (hilo Tkinter) cuando se hace doble-click en la bolita."""
@@ -91,6 +100,7 @@ def _process_user_text(user_text: str) -> dict:
         "append_to_file",
         "analyze_camera",
         "run_system_diagnostic",
+        "search_web_and_summarize",
     ]
     
     # 🛑 CORRECCIÓN: Si es una pregunta normal, NO sumamos las frases

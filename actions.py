@@ -553,6 +553,49 @@ def run_system_diagnostic() -> str:
         
     except Exception as e:
         return f"Error en los sensores del sistema: {e}"
+
+def search_web_and_summarize(query: str) -> str:
+    """Busca información en internet usando la API oficial y segura de DuckDuckGo."""
+    import brain
+    try:
+        from ddgs import DDGS
+    except ImportError:
+        return "Error crítico: El módulo de búsqueda web actualizado no está instalado."
+
+    try:
+        # AUMENTAMOS EL RANGO: Ahora lee los 7 mejores resultados en lugar de solo 3
+        with DDGS() as ddgs:
+            resultados = list(ddgs.text(query, max_results=7))
+            
+        if not resultados:
+            return f"Mis escáneres web no encontraron información sobre '{query}'."
+
+        contexto_web = ""
+        for res in resultados:
+            contexto_web += f"Fuente: {res.get('title')}\nInfo: {res.get('body')}\n\n"
+
+        # PROMPT BLINDADO: Le prohibimos saludar de nuevo y la obligamos a ser directa
+        prompt_investigacion = (
+            f"El usuario preguntó: '{query}'. "
+            f"Aquí tienes los datos en tiempo real extraídos de internet:\n\n{contexto_web}\n"
+            "REGLAS ESTRICTAS:\n"
+            "1. Ve DIRECTO AL GRANO. Responde EXACTAMENTE lo que se te pregunta.\n"
+            "2. NO saludes ni te presentes (ya lo hiciste en la frase anterior).\n"
+            "3. Si la información solicitada (ej. una lista de equipos) NO ESTÁ en estos datos, "
+            "di explícitamente: 'Los escáneres no captaron esa información exacta' y menciona brevemente lo que sí encontraste.\n"
+            "4. No leas enlaces ni uses formato markdown."
+        )
+
+        response = brain.client.models.generate_content(
+            model=brain.config.GEMINI_MODEL_NAME,
+            contents=prompt_investigacion,
+        )
+        
+        return response.text.replace("*", "").replace("#", "")
+
+    except Exception as e:
+        return f"Error en la conexión a la Matrix: {e}"
+    
 # =========================================================
 #  DESPACHADOR PRINCIPAL DE INTENCIONES
 # =========================================================
@@ -594,6 +637,8 @@ def execute_intent(intent: dict) -> str:
         "append_to_file": lambda: append_to_file(params.get("filepath", "nota.txt"), params.get("content", "")),
         "analyze_camera": lambda: analyze_camera(params.get("question", "Describe lo que ves")),
         "run_system_diagnostic": lambda: run_system_diagnostic(),
+        "search_web_and_summarize": lambda: search_web_and_summarize(params.get("query", "")),
+
     }
         
     handler = dispatch.get(action)
