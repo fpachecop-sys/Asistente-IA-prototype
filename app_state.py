@@ -5,7 +5,11 @@ class AppState:
     def __init__(self):
         self.orb_commands = queue.Queue()
         
-        # Conexión a tu SQL Server
+        # --- NUEVO: memoria de código separada del chat ---
+        self.last_code_snippet = None
+        self.last_code_language = None
+        # ----------------------------------------------------
+
         self.conn_str = (
             r"DRIVER={ODBC Driver 17 for SQL Server};"
             r"SERVER=KernelOS-PC\SQLEXPRESS;" 
@@ -13,9 +17,13 @@ class AppState:
             r"Trusted_Connection=yes;"
         )
         
-        # Cargamos las memorias persistentes al iniciar
         self.conversation_history = self._load_history()
-        self.reminders = self._load_reminders() # <-- ¡Aquí está la magia!
+        self.reminders = self._load_reminders()
+
+    # NUEVO método
+    def set_last_code(self, code: str, language: str = ""):
+        self.last_code_snippet = code
+        self.last_code_language = language
 
     def _get_connection(self):
         """Crea y devuelve la conexión a SQL Server."""

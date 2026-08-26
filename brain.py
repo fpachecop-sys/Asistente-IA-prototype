@@ -71,6 +71,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "answer_question": params: {{"text": "<respuesta directa, empática o analítica según el contexto>"}}
 - "comment_on_music": params: {{}} (Úsalo EXCLUSIVAMENTE cuando el usuario te pregunte qué está escuchando, qué opinas de su música, o si le gusta la canción actual).
 - "scroll_screen": params: {{"direction": "<abajo/arriba>"}} (Úsalo cuando el usuario te pida explícitamente bajar, subir o scrollear la pantalla actual).
+- "generate_code": params: {{"code": "<código completo, sin markdown>", "language": "<lenguaje, ej. python>", "explanation": "<explicación breve>"}} (Úsala SIEMPRE que el usuario pida crear, escribir o mejorar una función, script o snippet de código. Si el usuario dice "mejora esa función" o "arregla el código anterior", usa el bloque [ÚLTIMO CÓDIGO GENERADO] del contexto como base EXACTA y modifícalo, no inventes uno nuevo).
 
 Reglas importantes:
 1. "spoken_response" debe ser la frase exacta que leerá el motor de voz.
@@ -83,6 +84,12 @@ Reglas importantes:
 
 EJEMPLOS_DE_REFERENCIA = """
 Ejemplos (imita este formato EXACTO):
+
+Usuario: "hazme una función en python para generar ids únicos"
+{"action": "generate_code", "params": {"code": "import uuid\n\ndef generar_id():\n    return str(uuid.uuid4())[:8]", "language": "python", "explanation": "Función simple que genera un ID corto usando uuid4."}, "spoken_response": "Función generada."}
+
+Usuario: "mejora esa función para que reciba la longitud como parámetro"
+{"action": "generate_code", "params": {"code": "import uuid\n\ndef generar_id(longitud=8):\n    return str(uuid.uuid4())[:longitud]", "language": "python", "explanation": "Ahora acepta un parámetro 'longitud' con valor por defecto 8."}, "spoken_response": "Función mejorada."}
 
 Usuario: "yari, ¿de qué trata todo este pdf que estoy viendo?"
 {"action": "analyze_clipboard", "params": {"query": "De qué trata el documento"}, "spoken_response": "Analizando el texto del documento desde tu portapapeles."}
@@ -112,14 +119,23 @@ def _build_context() -> str:
     fecha = now.strftime("%A %d de %B, %Y")
     hora = now.strftime("%H:%M")
     clima = weather.get_today_weather()
-    
+
+    codigo_previo = ""
+    if getattr(config, "app_state_ref", None) and config.app_state_ref.last_code_snippet:
+        codigo_previo = (
+            f"\n[ÚLTIMO CÓDIGO GENERADO — úsalo como base EXACTA si piden mejorarlo/corregirlo]\n"
+            f"Lenguaje: {config.app_state_ref.last_code_language}\n"
+            f"```\n{config.app_state_ref.last_code_snippet}\n```\n"
+        )
+
     return (
         f"[CONTEXTO ACTUAL]\n"
         f"Fecha: {fecha} | Hora: {hora}\n"
-        f"Clima en Lima, Perú: {clima}\n\n"
+        f"Clima en Lima, Perú: {clima}\n"
+        f"{codigo_previo}\n"
         f"[PERFIL Y MEMORIA BASE DEL USUARIO]\n"
         f"Nombre: Franco Mariano Pacheco Poemape (Llámalo Franco).\n"
-        f"Perfil: Estudiante de la universidad Cesar Vallejo, en la carrera de 8vo ciclo de Ingeniería de Sistemas Es una persona muy curiosa y le gusta preguntar, crear e innovar tecnologias como la IA.\n"
+        f"Perfil: Estudiante de la universidad Cesar Vallejo, en la carrera de 8vo ciclo de Ingeniería de Sistemas. Es una persona muy curiosa y le gusta preguntar, crear e innovar tecnologias como la IA.\n"
         f"Conocimientos técnicos: Redes (VLAN, STP, DHCP).\n"
         f"Intereses personales: Saber más sobre Inteligencia Artifical, comportamientos, programación y juegos.\n"
         f"Estilo de vida: Sigue un split Upper/Lower en el gimnasio y una dieta estricta de recomposición corporal (huevos, arroz, pollo).\n"

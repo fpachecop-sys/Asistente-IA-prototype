@@ -23,6 +23,7 @@ app_state = AppState()
 _recorder = voice.PushToTalkRecorder()
 _is_holding_key = False
 _is_busy_processing = False
+config.app_state_ref = app_state
 
 _orb_app = None       # instancia de JarvisUI, se crea en el hilo Tkinter
 _webview_window = None  # ventana del dashboard

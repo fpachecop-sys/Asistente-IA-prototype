@@ -26,6 +26,7 @@ import requests
 import io
 import PyPDF2
 import asyncio
+import pygetwindow as gw
 
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
@@ -217,6 +218,13 @@ def scroll_screen(direction: str, amount: int = 500):
         pyautogui.scroll(amount)
     return f"Deslizando la pantalla hacia {direction}."
 
+def get_active_window_title() -> str:
+    try:
+        w = gw.getActiveWindow()
+        return w.title if w else "Desconocida"
+    except Exception:
+        return "Desconocida"
+    
 def type_text(text: str, press_enter: bool = False):
     if is_game_running():
         return "No puedo inyectar pulsaciones de teclado en este momento. Tienes un juego competitivo en ejecución."
@@ -421,6 +429,12 @@ def comment_on_music() -> str:
     except Exception:
         return f"Estás escuchando {song_info}, ¡excelente elección para mantener el ritmo!"
 
+def generate_code(code: str, language: str = "", explanation: str = ""):
+    import __main__
+    if hasattr(__main__, "app_state"):
+        __main__.app_state.set_last_code(code, language)
+    texto = f"{explanation}\n\n```{language}\n{code}\n```"
+    return texto
 
 # =========================================================
 #  DESPACHADOR PRINCIPAL DE INTENCIONES
@@ -455,6 +469,8 @@ def execute_intent(intent: dict) -> str:
         "analyze_online_pdf": lambda: analyze_online_pdf(params.get("url", ""), params.get("query", "")),
         "comment_on_music": lambda: comment_on_music(),
         "scroll_screen": lambda: scroll_screen(params.get("direction", "abajo")),
+        "generate_code": lambda: generate_code(params.get("code", ""), params.get("language", ""), params.get("explanation", "")),
+        
     }
         
     handler = dispatch.get(action)

@@ -1,8 +1,13 @@
 """
 voice.py
 --------
-Encapsula el reconocimiento de voz (Speech-to-Text) y la síntesis de
-voz de ultra-realismo usando ElevenLabs mediante API REST pura.
+Encapsula el reconocimiento de voz (Speech-to-Text vía Google Speech API,
+gratuito a través de la librería `speech_recognition`) y la síntesis de
+voz (Text-to-Speech vía `pyttsx3`, 100% local y sin costo).
+
+Ambas operaciones son bloqueantes por naturaleza, así que SIEMPRE deben
+llamarse desde un hilo (threading.Thread) para no congelar la interfaz
+gráfica de Tkinter.
 """
 
 import asyncio
@@ -11,15 +16,16 @@ import os
 import tempfile
 import uuid
 import wave
-import requests
 
 import pyaudio
 import speech_recognition as sr
 import pyttsx3
+import edge_tts
 import pygame
 
 import config
 
+# Inicializamos el mezclador de audio de pygame una sola vez
 pygame.mixer.init()
 
 # ---------------------------------------------------------
@@ -27,10 +33,12 @@ pygame.mixer.init()
 # ---------------------------------------------------------
 _recognizer = sr.Recognizer()
 
+# Configuración de grabación directa en memoria
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
+
 
 class PushToTalkRecorder:
     def __init__(self):
@@ -106,44 +114,25 @@ def stop_audio():
 
 
 # ---------------------------------------------------------
-# Texto a voz (TTS) - ElevenLabs API REST Directa
+# Texto a voz (TTS) - Edge TTS con fallback a pyttsx3
 # ---------------------------------------------------------
-def _speak_elevenlabs(text: str) -> bool:
-    """Genera audio hiperrealista conectándose directo al servidor de ElevenLabs."""
-    if not getattr(config, 'ELEVENLABS_API_KEY', None) or not getattr(config, 'ELEVENLABS_VOICE_ID', None):
-        return False
-        
-    temp_path = os.path.join(tempfile.gettempdir(), f"yari_tts_{uuid.uuid4().hex}.mp3")
-    
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{config.ELEVENLABS_VOICE_ID}"
-    
-    headers = {
-        "Accept": "audio/mpeg",
-        "Content-Type": "application/json",
-        "xi-api-key": config.ELEVENLABS_API_KEY
-    }
-    
-    data = {
-        "text": text,
-        "model_id": "eleven_multilingual_v2",
-        "voice_settings": {
-            "stability": 0.5,
-            "similarity_boost": 0.75
-        }
-    }
-    
+async def _edge_tts_save(text: str, filepath: str):
+    """Genera el audio con Edge TTS y lo guarda como MP3."""
+    communicate = edge_tts.Communicate(
+        text,
+        voice=config.TTS_EDGE_VOICE,
+        rate=config.TTS_EDGE_RATE,
+        volume=config.TTS_EDGE_VOLUME,
+    )
+    await communicate.save(filepath)
+
+
+def _speak_edge_tts(text: str) -> bool:
+    """Genera audio con Microsoft Edge Neuronal (Gratis y fluido)."""
+    temp_path = os.path.join(tempfile.gettempdir(), f"jarvis_tts_{uuid.uuid4().hex}.mp3")
     try:
-        response = requests.post(url, json=data, headers=headers)
-        
-        if response.status_code != 200:
-            print(f"[Error ElevenLabs API]: {response.text}")
-            return False
-            
-        with open(temp_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=1024):
-                if chunk:
-                    f.write(chunk)
-                    
+        asyncio.run(_edge_tts_save(text, temp_path))
+
         pygame.mixer.music.load(temp_path)
         pygame.mixer.music.play()
         while pygame.mixer.music.get_busy():
@@ -151,7 +140,7 @@ def _speak_elevenlabs(text: str) -> bool:
         pygame.mixer.music.unload()
         return True
     except Exception as e:
-        print(f"[ElevenLabs falló, usando fallback pyttsx3]: {e}")
+        print(f"[Edge TTS falló, usando fallback pyttsx3]: {e}")
         return False
     finally:
         try:
@@ -162,7 +151,7 @@ def _speak_elevenlabs(text: str) -> bool:
 
 
 def _speak_pyttsx3(text: str):
-    """Fallback 100% offline."""
+    """Fallback 100% offline usando las voces nativas del sistema."""
     engine = pyttsx3.init()
     engine.setProperty("rate", config.TTS_RATE)
     engine.setProperty("volume", config.TTS_VOLUME)
@@ -178,10 +167,25 @@ def _speak_pyttsx3(text: str):
 
 
 def speak(text: str):
+    """Intenta usar Edge TTS, si falla usa el motor offline."""
     if not text:
         return
-    
-    success = _speak_elevenlabs(text)
-    
-    if not success:
-        _speak_pyttsx3(text)
+
+    if getattr(config, 'TTS_USE_EDGE', True):
+        success = _speak_edge_tts(text)
+        if success:
+            return
+
+    _speak_pyttsx3(text)
+
+
+def list_available_voices():
+    engine = pyttsx3.init()
+    voices = engine.getProperty("voices")
+    for i, v in enumerate(voices):
+        print(f"[{i}] {v.name} - {v.languages} - id={v.id}")
+    engine.stop()
+
+
+if __name__ == "__main__":
+    list_available_voices()
