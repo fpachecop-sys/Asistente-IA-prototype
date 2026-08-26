@@ -134,56 +134,51 @@ def _process_audio_thread():
         _is_busy_processing = False
 
 
-def wake_word_loop():
-    import speech_recognition as sr
-    global _is_busy_processing
-    
-    recognizer = voice._recognizer
-    # Ajustamos la sensibilidad al ruido de tu cuarto
-    with sr.Microphone() as source:
-        print("Calibrando ruido de fondo...")
-        recognizer.adjust_for_ambient_noise(source, duration=1.5)
-        print("✅ Y.A.R.I. en línea. Di 'Yari' o 'Jarvis' para dar una orden.")
-        
-        while True:
-            try:
-                # Se queda esperando en bajo consumo hasta que hables
-                audio = recognizer.listen(source, timeout=1, phrase_time_limit=15)
-                
-                if _is_busy_processing:
-                    continue # Ignorar si la IA ya está hablando/pensando
-                    
-                app_state.set_orb_state("listening")
-                texto = voice.transcribe_audio_data(audio)
-                
-                if not texto:
-                    app_state.set_orb_state("idle")
-                    continue
-                    
-                texto_lower = texto.lower()
-                print(f"[Escuchado en ambiente]: {texto}")
-                
-                # Activar solo si oye su nombre
-                if "yari" in texto_lower or "jarvis" in texto_lower:
-                    _is_busy_processing = True
-                    # Limpiamos el nombre para enviar solo la orden a Gemini
-                    comando = texto_lower.replace("yari", "").replace("jarvis", "").strip()
-                    
-                    if comando:
-                        _process_user_text(comando)
-                    else:
-                        # Si solo dijiste su nombre y nada más
-                        voice.speak("¿En qué te ayudo?")
-                        app_state.set_orb_state("idle")
-                        _is_busy_processing = False
-                else:
-                    app_state.set_orb_state("idle")
+def _recording_loop():
+    global _is_holding_key
+    while _is_holding_key:
+        _recorder.record_chunk()
+        time.sleep(0.01)
 
-            except sr.WaitTimeoutError:
-                app_state.set_orb_state("idle")
-            except Exception as e:
-                app_state.set_orb_state("idle")
-                pass
+
+def register_push_to_talk():
+    global _is_holding_key, _is_busy_processing
+    target_key = config.HOTKEY_ACTIVATE.lower()
+
+    def on_key_event(event):
+        global _is_holding_key, _is_busy_processing
+        
+        # Si la tecla presionada no es la configurada, ignoramos
+        if event.name.lower() != target_key:
+            return
+
+        # Cuando PRESIONAS la tecla hacia abajo
+        if event.event_type == keyboard.KEY_DOWN:
+            voice.stop_audio() # Interrumpe si estaba hablando
+            
+            if not _is_holding_key and not _is_busy_processing:
+                _is_holding_key = True
+                app_state.set_orb_state("listening")
+                _recorder.start()
+                threading.Thread(target=_recording_loop, daemon=True).start()
+
+        # Cuando SUELTAS la tecla
+        elif event.event_type == keyboard.KEY_UP:
+            if _is_holding_key:
+                _is_holding_key = False
+                threading.Thread(target=_process_audio_thread, daemon=True).start()
+
+    def on_quit():
+        print("Cerrando Y.A.R.I...")
+        if _webview_window:
+            _webview_window.destroy()
+        if _orb_app:
+            _orb_app.after(0, _orb_app.destroy)
+
+    keyboard.hook(on_key_event)
+    keyboard.add_hotkey(config.HOTKEY_QUIT, on_quit)
+    print(f"✅ Y.A.R.I. lista. Mantén presionada [{config.HOTKEY_ACTIVATE.upper()}] para hablar.")
+    keyboard.wait()
 
 # =========================================================
 #   Hilo de la bolita (Tkinter)
@@ -204,9 +199,8 @@ def main():
     # Hilo 1: la bolita (Tkinter), oculta hasta que se pida
     threading.Thread(target=start_orb_thread, daemon=True).start()
 
-    # Hilo 2: Motor Auditivo Constante (Wake-Word)
-    threading.Thread(target=wake_word_loop, daemon=True).start()
-
+    # Hilo 2: hotkey global en segundo plano
+    threading.Thread(target=register_push_to_talk, daemon=True).start()
     # Hilo 3: El vigilante del tiempo (Proactivo)
     threading.Thread(target=_proactive_reminder_loop, daemon=True).start()
     

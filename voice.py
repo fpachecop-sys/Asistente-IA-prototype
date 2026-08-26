@@ -120,12 +120,20 @@ def transcribe_audio_data(audio_data) -> str:
         except Exception:
             pass
 
-        texto_limpio = texto_completo.strip()
-        
         # --- FILTRO ANTI-FANTASMAS ---
+        texto_limpio = texto_completo.strip()
+        texto_test = texto_limpio.lower()
+        
+        # Palabras prohibidas de YouTube
         fantasmas = ["amara.org", "suscríbete", "subtítulos", "gracias", "youtube"]
-        if any(fantasma in texto_limpio.lower() for fantasma in fantasmas) or len(texto_limpio) < 4:
-            return "" # Ignorar silencios alucinados
+        
+        # Filtro 1: Si dice palabras fantasma o es muy corto
+        if any(f in texto_test for f in fantasmas) or len(texto_limpio) < 4:
+            return "" 
+            
+        # Filtro 2: Si es una alucinación repetitiva (ej: "y y y y y")
+        if texto_test.count(" y ") > 3 or texto_test.count(" a ") > 3:
+            return ""
             
         return texto_limpio
         
