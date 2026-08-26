@@ -481,7 +481,29 @@ def append_to_file(filepath: str, content: str) -> str:
         return f"Éxito: Se agregaron las nuevas líneas al archivo '{filename}'."
     except Exception as e:
         return f"Error crítico al agregar texto al archivo: {e}"
+
+
+def analyze_camera(question: str = "Describe lo que ves") -> str:
+    """Le pide al HUD (JavaScript) que tome un frame de la cámara web activa."""
+    import __main__
+    import base64
+    import brain
     
+    try:
+        # Verificamos que la ventana web exista
+        if hasattr(__main__, "_webview_window") and __main__._webview_window:
+            # Ejecutamos la función de JavaScript y recibimos la foto en texto Base64
+            base64_img = __main__._webview_window.evaluate_js('takeSnapshot()')
+            
+            if base64_img:
+                # Convertimos el texto a bytes puros y se los damos a Gemini
+                img_bytes = base64.b64decode(base64_img)
+                return brain.ask_about_image(img_bytes, question)
+                
+        return "Error: No pude comunicarme con el sensor óptico del HUD."
+    except Exception as e:
+        return f"Error procesando la imagen de la cámara: {e}"
+
 # =========================================================
 #  DESPACHADOR PRINCIPAL DE INTENCIONES
 # =========================================================
@@ -521,7 +543,8 @@ def execute_intent(intent: dict) -> str:
         "click_and_type": lambda: vision_control.click_and_type(params.get("description", ""), params.get("text", ""), params.get("press_enter", False)),
         "modify_file": lambda: modify_file(params.get("filepath", "nota.txt"), params.get("content", "")),
         "append_to_file": lambda: append_to_file(params.get("filepath", "nota.txt"), params.get("content", "")),
-        
+        "analyze_camera": lambda: analyze_camera(params.get("question", "Describe lo que ves")),
+
     }
         
     handler = dispatch.get(action)

@@ -62,6 +62,12 @@ function appendMessage(role, text) {
 function setOrbState(state) {
   orbIndicator.className = "orb-dot " + (state === "idle" ? "" : state);
   orbLabel.textContent = STATE_LABELS[state] || "En reposo";
+
+  // Apagar el láser de la cámara si la IA ya dejó de "pensar"
+  if (state !== "thinking") {
+    const scanline = document.querySelector('.camera-scanline');
+    if (scanline) scanline.classList.remove('active');
+  }
 }
 
 // ---------------------------------------------------------
@@ -233,3 +239,39 @@ btnInject.addEventListener('click', injectSkill);
 skillInput.addEventListener('keydown', (e) => {
   if (e.key === "Enter") injectSkill();
 });
+
+// --- LÓGICA DEL SENSOR ÓPTICO (WEBCAM) ---
+async function initCamera() {
+  const videoEl = document.getElementById('camera-feed');
+  const wrapper = document.querySelector('.camera-wrapper');
+  
+  try {
+    // Pedimos acceso a la cámara web (solo video, sin audio para evitar eco)
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    videoEl.srcObject = stream;
+  } catch (error) {
+    console.error("Error al acceder a la cámara:", error);
+    // Si falla (ej. no tienes cámara conectada), muestra un mensaje estilo HUD
+    wrapper.innerHTML = '<span class="stat-row-sub" style="color: #ffaa00;">SEÑAL DE VÍDEO PERDIDA. VERIFIQUE CONEXIÓN.</span>';
+  }
+}
+
+// Inicializar la cámara apenas cargue la página
+window.addEventListener('DOMContentLoaded', initCamera);
+// Función para que Python pueda pedir una foto sin apagar la cámara web
+function takeSnapshot() {
+  const video = document.getElementById('camera-feed');
+  if (!video || !video.videoWidth) return null;
+  
+  // Encender el escáner visualmente al tomar la foto
+  const scanline = document.querySelector('.camera-scanline');
+  if (scanline) scanline.classList.add('active');
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  
+  // Retorna la foto comprimida al 50% de calidad
+  return canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+}

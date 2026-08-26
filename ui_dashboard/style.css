@@ -415,3 +415,66 @@ body {
 }
 .skill-item strong { font-size: 12px; color: var(--accent); margin-bottom: 2px;}
 .skill-item span { font-size: 11px; color: var(--text-dim); font-style: italic;}
+
+/* ---------- SENSOR ÓPTICO (CÁMARA) ---------- */
+.camera-wrapper {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 5px;
+}
+
+#camera-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Le da un toque ligeramente azulado/robótico y aumenta el contraste */
+  filter: grayscale(30%) sepia(40%) hue-rotate(180deg) contrast(120%);
+}
+
+.camera-scanline {
+  position: absolute;
+  top: 0; left: 0; right: 0; 
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 15px var(--accent);
+  opacity: 0; /* Oculto por defecto */
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Esta clase se activará solo cuando Y.A.R.I. esté analizando */
+.camera-scanline.active {
+  opacity: 0.8;
+  animation: scan 2s linear infinite;
+}
+
+.camera-target {
+  position: absolute;
+  width: 40px; height: 40px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.camera-target::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px; height: 4px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+@keyframes scan {
+  0% { top: -10%; }
+  100% { top: 110%; }
+}
