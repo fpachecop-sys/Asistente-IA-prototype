@@ -27,6 +27,7 @@ import io
 import PyPDF2
 import asyncio
 import pygetwindow as gw
+import vision_control
 
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
@@ -470,6 +471,9 @@ def execute_intent(intent: dict) -> str:
         "comment_on_music": lambda: comment_on_music(),
         "scroll_screen": lambda: scroll_screen(params.get("direction", "abajo")),
         "generate_code": lambda: generate_code(params.get("code", ""), params.get("language", ""), params.get("explanation", "")),
+        "click_on_element": lambda: vision_control.click_on(params.get("description", "")),
+        "move_mouse_to": lambda: vision_control.move_to(params.get("description", "")),
+        "click_and_type": lambda: vision_control.click_and_type(params.get("description", ""), params.get("text", ""), params.get("press_enter", False)),
         
     }
         

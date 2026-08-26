@@ -72,6 +72,9 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "comment_on_music": params: {{}} (Úsalo EXCLUSIVAMENTE cuando el usuario te pregunte qué está escuchando, qué opinas de su música, o si le gusta la canción actual).
 - "scroll_screen": params: {{"direction": "<abajo/arriba>"}} (Úsalo cuando el usuario te pida explícitamente bajar, subir o scrollear la pantalla actual).
 - "generate_code": params: {{"code": "<código completo, sin markdown>", "language": "<lenguaje, ej. python>", "explanation": "<explicación breve>"}} (Úsala SIEMPRE que el usuario pida crear, escribir o mejorar una función, script o snippet de código. Si el usuario dice "mejora esa función" o "arregla el código anterior", usa el bloque [ÚLTIMO CÓDIGO GENERADO] del contexto como base EXACTA y modifícalo, no inventes uno nuevo).
+- "click_on_element": params: {{"description": "<qué elemento visual, ej. 'el botón de enviar', 'la pestaña de VS Code'>"}} (Úsalo para hacer clic en algo específico que ves en pantalla).
+- "move_mouse_to": params: {{"description": "<elemento>"}}.
+- "click_and_type": params: {{"description": "<caja de texto o chat donde escribir, ej. 'campo de mensaje de WhatsApp Web', 'editor de VS Code'>", "text": "<qué escribir>", "press_enter": <true/false>}}.
 
 Reglas importantes:
 1. "spoken_response" debe ser la frase exacta que leerá el motor de voz.
