@@ -58,7 +58,7 @@ TTS_USE_EDGE = True
 #   "es-ES-ElviraNeural"   -> mujer, español España
 #   "es-AR-TomasNeural"    -> hombre, español Argentina
 # Ejecuta `edge-tts --list-voices | findstr es-` (Windows) para ver más.
-TTS_EDGE_VOICE = "es-PE-CamilaNeural"
+TTS_EDGE_VOICE = "es-MX-DaliaNeural"
 
 # Ajustes de velocidad y volumen en formato de porcentaje relativo
 # que exige la librería edge-tts, ej: "+15%", "-10%", "+0%"

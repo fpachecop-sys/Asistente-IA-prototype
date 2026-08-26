@@ -69,6 +69,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "remember_fact": params: {{"text": "<resumen de lo que debes anotar>"}} (Úsalo cuando Franco te pida que recuerdes algo, que lo anotes para después o que lo guardes en su memoria).
 - "set_reminder": params: {{"time": "<hora en formato 24h, ej: 17:00>", "task": "<descripción corta>"}} (Úsalo cuando el usuario te pida recordar algo, agendar un pendiente o avisarle a cierta hora).
 - "get_reminders": params: {{}} (OBLIGATORIO: Úsalo SIEMPRE que el usuario te pregunte qué pendientes o tareas tiene para hoy. No inventes tareas leyendo el historial).
+- "analyze_document": params: {{"filepath": "<ruta absoluta o relativa del archivo>", "query": "<lo que el usuario quiere saber o analizar del documento>"}} (Úsalo cuando el usuario te pida leer, analizar, revisar o resumir un documento, PDF, reporte o archivo de código específico).
 
 Reglas importantes:
 1. "spoken_response" debe ser SIEMPRE una frase corta, fluida y hablada en voz alta
@@ -82,6 +83,8 @@ Reglas importantes:
 6. No agregues texto ni explicaciones fuera de la estructura JSON.
 7. Si te preguntan por el clima, la fecha o la hora, USA EXCLUSIVAMENTE los datos
    del bloque [CONTEXTO ACTUAL], nunca los inventes.
+8. NUNCA uses formato Markdown en "spoken_response" ni en "answer_question". No uses asteriscos (*), 
+    negritas, ni cursivas. Escribe exclusivamente texto plano y conversacional como si estuvieras hablando.
 """
 
 EJEMPLOS_DE_REFERENCIA = """
@@ -179,9 +182,10 @@ def get_intent_from_text(user_text: str) -> dict:
 def ask_about_image(image_bytes: bytes, question: str) -> str:
     # Este candado fuerza a la IA a ignorar el ruido visual y responder solo lo que pides
     vision_prompt = (
-        "Eres el sistema óptico de JARVIS. Analiza esta captura de pantalla "
-        "y responde ÚNICAMENTE a lo que el usuario pide a continuación. "
-        "Sé directo, conciso y NO describas la interfaz, ni los colores, ni nada que no se haya pedido. "
+        "Eres Y.A.R.I. Observa esta pantalla y "
+        "responde de forma natural, rápida y experta a la consulta del usuario. "
+        "Ignora menús, colores o ruido visual irrelevante. "
+        "Ve directo al grano con un tono conversacional y analítico."
         f"Instrucción del usuario: {question}"
     )
     

@@ -23,6 +23,8 @@ import brain
 import keyboard
 import time
 import uuid
+import psutil
+import pyautogui
 
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
@@ -167,6 +169,7 @@ APP_MAP = {
     "spotify": "spotify",
     "chrome": "chrome",
     "navegador": "chrome",
+    "brave": "brave",
     "steam": "steam",
 }
 
@@ -214,6 +217,24 @@ STEAM_GAMES = {
     "left 4 dead 2": "550",
     "tom clancy's ghost recon": "460930"
 }
+# Lista de procesos bloqueados. Agregué los que sueles usar en Steam.
+PROTOCOLOS_SEGUROS = [
+    "cs2.exe",           # Counter-Strike 2
+    "left4dead2.exe",    # Left 4 Dead 2
+    "grb.exe",           # Ghost Recon (Breakpoint/Wildlands)
+    "grw.exe"            # Ghost Recon Wildlands
+]
+
+def is_game_running() -> bool:
+    """Escanea la memoria RAM para ver si hay un juego activo."""
+    for proc in psutil.process_iter(['name']):
+        try:
+            # Compara el nombre del proceso en minúsculas
+            if proc.info['name'] and proc.info['name'].lower() in PROTOCOLOS_SEGUROS:
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    return False
 
 # =========================================================
 #   DESPACHADOR PRINCIPAL DE INTENCIONES
@@ -253,6 +274,7 @@ def execute_intent(intent: dict) -> str:
         "remember_fact": lambda: remember_fact(params.get("text", "")),
         "set_reminder": lambda: set_reminder(params.get("time", ""), params.get("task", "")),
         "get_reminders": lambda: get_all_reminders(),
+        "analyze_document": lambda: analyze_document(params.get("filepath", ""), params.get("query", ""))
     }
 
     handler = dispatch.get(action)
@@ -354,3 +376,97 @@ def get_all_reminders():
             return f"Error leyendo la base de datos: {e}"
             
     return "Error de conexión con la base de datos."
+
+def extract_text_from_file(filepath: str) -> str:
+    """Extrae texto de archivos TXT, PY, PDF o DOCX."""
+    # Expandimos rutas relativas si es necesario
+    filepath = os.path.abspath(filepath)
+    
+    if not os.path.exists(filepath):
+        return f"Error: No pude encontrar el archivo en la ruta {filepath}"
+
+    ext = filepath.split('.')[-1].lower()
+    texto_extraido = ""
+
+    try:
+        if ext in ['txt', 'py', 'js', 'html', 'css', 'md']:
+            # Archivos de código o texto plano
+            with open(filepath, 'r', encoding='utf-8') as f:
+                texto_extraido = f.read()
+                
+        elif ext == 'pdf':
+            # Archivos PDF
+            import PyPDF2
+            with open(filepath, 'rb') as f:
+                lector = PyPDF2.PdfReader(f)
+                for pagina in lector.pages:
+                    texto_extraido += pagina.extract_text() + "\n"
+                    
+        elif ext == 'docx':
+            # Archivos Word
+            import docx
+            doc = docx.Document(filepath)
+            for parrafo in doc.paragraphs:
+                texto_extraido += parrafo.text + "\n"
+        else:
+            return f"Error: Formato .{ext} no soportado para lectura directa."
+            
+        return texto_extraido
+    except Exception as e:
+        return f"Error leyendo el archivo: {e}"
+
+def analyze_document(filepath: str, query: str) -> str:
+    """Extrae el texto y le pide a Gemini que lo analice según la consulta."""
+    import brain # Importamos el cerebro para procesar
+    
+    contenido = extract_text_from_file(filepath)
+    
+    if contenido.startswith("Error:"):
+        return contenido
+        
+    # Si el archivo es muy grande, lo limitamos para no saturar la memoria de la API
+    contenido = contenido[:30000] 
+    
+    # Creamos un prompt específico para análisis de documentos
+    prompt_analisis = (
+        f"Eres Y.A.R.I. Analiza el siguiente contenido de un archivo local y responde a esta consulta del usuario: '{query}'.\n\n"
+        f"CONTENIDO DEL ARCHIVO:\n{contenido}"
+    )
+    
+    # Usamos una llamada directa a Gemini para obtener la respuesta experta
+    try:
+        response = brain.client.models.generate_content(
+            model=brain.config.GEMINI_MODEL_NAME,
+            contents=prompt_analisis,
+        )
+        return response.text or "El análisis finalizó, pero no generó respuesta."
+    except Exception as e:
+        return f"Error procesando el análisis con IA: {e}"
+
+def scroll_screen(direction: str, amount: int = 500):
+    """Hace scroll, pero solo si es seguro."""
+    if is_game_running():
+        return "Protocolo de seguridad activo. Control de mouse deshabilitado mientras juegas para evitar sanciones."
+        
+    if direction.lower() == "abajo":
+        pyautogui.scroll(-amount)
+    else:
+        pyautogui.scroll(amount)
+    return f"Deslizando la pantalla hacia {direction}."
+    
+
+def type_text(text: str, press_enter: bool = False):
+    """Escribe un texto, pero verifica el entorno primero."""
+    if is_game_running():
+        return "No puedo inyectar pulsaciones de teclado en este momento. Tienes un juego competitivo en ejecución."
+        
+    import time
+    time.sleep(2.5) 
+    
+    import keyboard
+    keyboard.write(text, delay=0.02) 
+    
+    if press_enter:
+        keyboard.send("enter")
+        
+    return f"He escrito: {text}"

@@ -72,20 +72,22 @@ def _process_user_text(user_text: str) -> dict:
     intent = brain.get_intent_from_text(user_text)
     action_result_text = actions.execute_intent(intent)
     
-    # NUEVA LÓGICA DE RESPUESTA:
     action_name = intent.get("action")
     
-    # Si la acción es analizar la pantalla, unimos el saludo con el análisis real
     if action_name == "analyze_screen":
         short_intro = intent.get("spoken_response", "Revisando la pantalla.")
         spoken_text = f"{short_intro} {action_result_text}"
     else:
-        # Comportamiento normal para las demás acciones
         spoken_text = intent.get("spoken_response") or action_result_text
+
+    # 👇 AGREGAR ESTA LÍNEA (Limpia asteriscos y formato markdown) 👇
+    spoken_text = spoken_text.replace("*", "").replace("#", "")
 
     app_state.add_message("assistant", spoken_text)
     app_state.set_orb_state("speaking")
+    
     voice.speak(spoken_text)
+    
     app_state.set_orb_state("idle")
 
     return {"spoken_response": spoken_text}

@@ -21,5 +21,5 @@ def take_screenshot(save_to_memory=True) -> bytes:
             
         # --- BUFFER PARA LA IA ---
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=70) # Calidad normal para que Gemini vea bien
+        img.save(buffer, format="JPEG", quality=50) # Calidad normal para que Gemini vea bien
         return buffer.getvalue()
