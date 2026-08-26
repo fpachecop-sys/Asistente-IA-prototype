@@ -27,7 +27,9 @@ no requieren que actives ningún login de usuario para este flujo).
 import os
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-
+import subprocess
+import time
+import pyautogui
 import config
 
 _sp_client = None
@@ -74,10 +76,16 @@ def search_and_play(query: str) -> str:
         # spotify_control.py (reemplaza el final de search_and_play)
         import subprocess
         import time
-        cmd = f"Start-Process 'spotify:track:{track_id}' -WindowStyle Minimized"
+        import pyautogui
+        cmd = f"Start-Process 'spotify:track:{track_id}'"
         subprocess.run(["powershell", "-command", cmd], shell=True)
         
-        time.sleep(1.5) 
+        # Le damos 2 segundos a la PC para traer Spotify al frente
+        time.sleep(2) 
+        
+        # Forzamos el "Doble Clic" o "Play" pulsando Enter
+        pyautogui.press('enter')
+        
         return f"Reproduciendo {track_name} de {artist_name} en Spotify."
 
     except Exception as e:

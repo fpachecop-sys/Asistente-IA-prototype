@@ -60,6 +60,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "media_previous": params: {{}}
 - "open_app": params: {{"app_name": "<nombre del programa>"}}
 - "open_steam_game": params: {{"game_name": "<nombre del juego en minúsculas>"}}
+- "play_on_spotify": params: {{"song_name": "<nombre de la canción y artista>"}} (Úsalo para reproducir música. IMPORTANTE: Si recibes transcripciones mal escritas fonéticamente al español como "arena grande", "traves escot", o "posiciones", debes deducir y CORREGIR los nombres reales en inglés como "Ariana Grande", "Travis Scott", o "Positions" ANTES de enviarlos al parámetro).
 - "play_spotify_track": params: {{"query": "<canción y artista>"}}
 - "get_current_date": params: {{}}
 - "get_current_time": params: {{}}
@@ -199,12 +200,19 @@ def get_intent_from_text(user_text: str) -> dict:
 
 
 def ask_about_image(image_bytes: bytes, question: str) -> str:
-    # Este candado fuerza a la IA a ignorar el ruido visual y responder solo lo que pides
+    # 🛑 NUEVO PROMPT EXPANDIDO: Múltiples contextos (Escritorio, Juegos, Texto)
     vision_prompt = (
-        "Eres Y.A.R.I. Observa esta pantalla y "
-        "responde de forma natural, rápida y experta a la consulta del usuario. "
-        "Ignora menús, colores o ruido visual irrelevante. "
-        "Ve directo al grano con un tono conversacional y analítico. "
+        "Eres Y.A.R.I., un asistente de análisis visual avanzado. "
+        "Analiza esta imagen con extrema precisión, adaptando tu cerebro a lo que ves:\n\n"
+        "1. ESCRITORIO O SOFTWARE: Si ves una interfaz o cuadrícula de iconos, y el usuario pregunta "
+        "por ubicaciones (arriba, abajo, izquierda, derecha), lee mentalmente fila por fila y columna "
+        "por columna. No adivines ni aproximes diagonales.\n"
+        "2. VIDEOJUEGOS: Si detectas que es un juego, identifica elementos del HUD (salud, minimapa, armas). "
+        "Reconoce y nombra entidades específicas si las conoces (ej. tipos de infectados, monstruos, vehículos) "
+        "y entiende la espacialidad 3D respecto a la mira del jugador.\n"
+        "3. PROCESAMIENTO DE TEXTO (OCR): Si el usuario pide leer, ordenar, traducir o modificar un texto "
+        "que aparece en pantalla, extrae primero las palabras exactas de la imagen y luego aplica la instrucción solicitada.\n\n"
+        "Ve directo al grano, sin rodeos, con un tono experto, analítico y conversacional. "
         f"Instrucción del usuario: {question}"
     )
     

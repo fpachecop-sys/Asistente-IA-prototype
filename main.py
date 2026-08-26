@@ -148,6 +148,10 @@ def register_push_to_talk():
     def on_key_event(event):
         global _is_holding_key, _is_busy_processing
         
+        # 🛑 PARCHE ANTI-CRASH: Si el evento no tiene nombre, lo ignoramos
+        if not event.name:
+            return
+            
         # Si la tecla presionada no es la configurada, ignoramos
         if event.name.lower() != target_key:
             return

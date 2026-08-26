@@ -110,6 +110,17 @@ def search_youtube(query: str):
     webbrowser.open(url)
     return f"Buscando '{query}' en YouTube."
 
+def play_on_spotify(song_name: str) -> str:
+    """Utiliza la API oficial de Spotify para buscar y reproducir música."""
+    import spotify_control
+    
+    try:
+        # Llamamos a la función que ya tienes programada en tu archivo
+        resultado = spotify_control.search_and_play(song_name)
+        return resultado
+    except Exception as e:
+        return f"Error al conectar con el módulo de Spotify: {e}"
+    
 def search_google(query: str):
     q = urllib.parse.quote_plus(query)
     url = f"https://www.google.com/search?q={q}"
