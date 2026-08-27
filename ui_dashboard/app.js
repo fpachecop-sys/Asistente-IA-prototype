@@ -55,7 +55,7 @@ function setOrbState(state) {
   }
 }
 
-// NUEVO: Radar de sincronización en tiempo real con Python
+// Radar de sincronización en tiempo real con Python
 setInterval(async () => {
   if (window.pywebview && window.pywebview.api && window.pywebview.api.get_orb_state) {
     const state = await window.pywebview.api.get_orb_state();
@@ -131,7 +131,7 @@ async function refreshDashboardData() {
         document.getElementById("ram-detail").textContent =
           `${data.stats.ram_used_gb} / ${data.stats.ram_total_gb} GB`;
       }
-    } // <-- Aquí cerramos correctamente el bloque de Stats
+    }
 
     // 2. Clima
     if (data.weather) {
@@ -146,7 +146,7 @@ async function refreshDashboardData() {
     console.error("Error al actualizar telemetría/clima:", err);
   }
 
-  // 3. Pendientes (Envuelto en su propio try-catch para no romper el resto)
+  // 3. Pendientes
   try {
     const reminders = await window.pywebview.api.get_reminders();
     const container = document.getElementById("reminders-container");
@@ -211,7 +211,6 @@ async function injectSkill() {
   const command = `DIRECTRIZ DE SISTEMA DE ALTA PRIORIDAD. A partir de ahora debes cumplir esta regla de personalidad/habilidad: ${rule}. Confirma de manera muy breve diciendo "Protocolos de personalidad actualizados."`;
   
   skillInput.value = "";
-  // NO dibujamos el mensaje de inyección aquí.
   setOrbState("thinking");
 
   try {
@@ -235,30 +234,24 @@ async function initCamera() {
   const wrapper = document.querySelector('.camera-wrapper');
   
   try {
-    // Pedimos acceso a la cámara web (solo video, sin audio para evitar eco)
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     videoEl.srcObject = stream;
   } catch (error) {
     console.error("Error al acceder a la cámara:", error);
-    // Si falla (ej. no tienes cámara conectada), muestra un mensaje estilo HUD
     wrapper.innerHTML = '<span class="stat-row-sub" style="color: #ffaa00;">SEÑAL DE VÍDEO PERDIDA. VERIFIQUE CONEXIÓN.</span>';
   }
 }
 
-// Inicializar la cámara apenas cargue la página
 window.addEventListener('DOMContentLoaded', initCamera);
-// Función para que Python pueda pedir una foto sin apagar la cámara web
-// Función para que Python pueda pedir una foto sin apagar la cámara web
+
 function takeSnapshot() {
   const video = document.getElementById('camera-feed');
   if (!video || !video.videoWidth) return null;
   
-  // Encender el escáner visualmente
   const scanline = document.querySelector('.camera-scanline');
   if (scanline) {
     scanline.classList.add('active');
     
-    // APAGADO AUTOMÁTICO: Quitamos el láser 2.5 segundos después de tomar la foto
     setTimeout(() => {
       scanline.classList.remove('active');
     }, 2500);
@@ -269,7 +262,6 @@ function takeSnapshot() {
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
   
-  // Retorna la foto comprimida al 50% de calidad
   return canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
 }
 
@@ -278,30 +270,26 @@ function appendMessageToChat(role, text) {
   const chatContainer = document.getElementById('chat-messages');
   if (!chatContainer) return;
 
-  // Crear el contenedor del mensaje
   const msgDiv = document.createElement('div');
   msgDiv.className = role === 'user' ? 'msg msg-user' : 'msg msg-assistant';
 
-  // Crear la burbuja de texto
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.textContent = text;
 
-  // Crear la hora actual
   const timeSpan = document.createElement('span');
   timeSpan.className = 'msg-time';
   const now = new Date();
   timeSpan.textContent = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
-  // Ensamblar e inyectar
   msgDiv.appendChild(bubble);
   msgDiv.appendChild(timeSpan);
   chatContainer.appendChild(msgDiv);
 
-  // Hacer auto-scroll hasta el fondo para ver el mensaje nuevo
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
-// Gatillo para enviar el volumen de voz a Python en tiempo real
+
+// Control de Volumen TTS
 const ttsVolume = document.getElementById('tts-volume-slider');
 if (ttsVolume) {
   ttsVolume.addEventListener('input', (e) => {
@@ -311,3 +299,43 @@ if (ttsVolume) {
   });
 }
 
+// --- MANEJO DEL MODAL DE AUDIO Y DIAGNÓSTICO DE MICRÓFONO ---
+const btnMicSettings = document.getElementById('btn-mic-settings');
+const audioModal = document.getElementById('audio-modal');
+const closeAudioModal = document.getElementById('close-audio-modal');
+const btnTestMic = document.getElementById('btn-test-mic');
+const noiseGateSlider = document.getElementById('noise-gate-slider');
+
+if (btnMicSettings && audioModal) {
+  btnMicSettings.addEventListener('click', () => {
+    audioModal.style.display = 'flex';
+  });
+
+  closeAudioModal.addEventListener('click', () => {
+    audioModal.style.display = 'none';
+  });
+
+  btnTestMic.addEventListener('click', async () => {
+    btnTestMic.textContent = "ESCUCHANDO...";
+    btnTestMic.style.background = "#ff0055"; // Cambia a rojo temporalmente
+    
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.test_microphone) {
+      await window.pywebview.api.test_microphone();
+    }
+    
+    // Restaurar el botón después de 3.5 segundos
+    setTimeout(() => {
+      btnTestMic.textContent = "🔴 INICIAR PRUEBA (3 SEGUNDOS)";
+      btnTestMic.style.background = ""; // Vuelve al color original
+    }, 3500);
+  });
+}
+
+// Control del Noise Gate (Sintaxis para Python si está implementado)
+if (noiseGateSlider) {
+  noiseGateSlider.addEventListener('input', (e) => {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.set_noise_gate) {
+      window.pywebview.api.set_noise_gate(e.target.value);
+    }
+  });
+}

@@ -67,6 +67,65 @@ class Bridge:
         except Exception as e:
             print(f"Error cambiando volumen de voz: {e}")
 
+    def test_microphone(self):
+        """Graba 3 segundos y reproduce el audio para probar la calidad."""
+        import threading
+        
+        def run_test():
+            import pyaudio
+            import wave
+            import pygame
+            import os
+            import tempfile
+            import uuid # <-- Añadimos uuid para crear nombres únicos
+            
+            CHUNK = 1024
+            FORMAT = pyaudio.paInt16
+            CHANNELS = 1
+            RATE = 16000
+            p = pyaudio.PyAudio()
+            
+            try:
+                stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+                frames = []
+                # Grabar por ~3 segundos
+                for _ in range(0, int(RATE / CHUNK * 3)):
+                    data = stream.read(CHUNK)
+                    frames.append(data)
+                stream.stop_stream()
+                stream.close()
+                p.terminate()
+                
+                # 1. PARCHE DE BLOQUEO: Nombre de archivo 100% único cada vez
+                temp_wav = os.path.join(tempfile.gettempdir(), f"test_mic_{uuid.uuid4().hex}.wav")
+                
+                wf = wave.open(temp_wav, 'wb')
+                wf.setnchannels(CHANNELS)
+                wf.setsampwidth(p.get_sample_size(FORMAT))
+                wf.setframerate(RATE)
+                wf.writeframes(b''.join(frames))
+                wf.close()
+                
+                # 2. Reproducir
+                pygame.mixer.music.load(temp_wav)
+                pygame.mixer.music.play()
+                
+                # 3. Esperar a que el audio termine de sonar
+                while pygame.mixer.music.get_busy():
+                    pygame.time.Clock().tick(10)
+                    
+                # 4. PARCHE DE LIMPIEZA: Liberar la pista del motor y borrar el archivo físico
+                pygame.mixer.music.unload()
+                try:
+                    os.remove(temp_wav)
+                except Exception:
+                    pass
+                    
+            except Exception as e:
+                print(f"Error en prueba de mic: {e}")
+
+        threading.Thread(target=run_test, daemon=True).start()
+        return "Prueba iniciada"
 
 def _restore_dashboard_from_orb():
     """Llamado desde ui.py (hilo Tkinter) cuando se hace doble-click en la bolita."""

@@ -564,3 +564,22 @@ body {
   cursor: pointer;
   box-shadow: 0 0 8px #00e5ff;
 }
+
+/* ---------- MODALES ---------- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  width: 400px;
+  background: #0a0e17;
+  padding: 20px;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+}
