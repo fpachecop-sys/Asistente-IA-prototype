@@ -2,29 +2,27 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>JARVIS HUD Core</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Y.A.R.I // Neural HUD</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 </head>
 <body data-theme="cyan">
-
 <div class="app">
-  <!-- Topbar Futurista -->
   <header class="topbar">
     <div class="brand">
       <span class="brand-dot"></span>
       <span class="brand-text">Y.A.R.I</span>
-      <span class="sys-version">v3.0 // ONLINE</span>
+      <span class="sys-version">NEURAL CORE // ONLINE</span>
     </div>
 
-    <!-- Selector de Temas -->
-    <div class="theme-selector">
-      <div class="theme-btn" data-color="cyan" style="background: #00e5ff;" title="Núcleo Cian"></div>
-      <div class="theme-btn" data-color="magenta" style="background: #ff00ff;" title="Núcleo Magenta"></div>
-      <div class="theme-btn" data-color="matrix" style="background: #00ff88;" title="Núcleo Matrix"></div>
-      <div class="theme-btn" data-color="amber" style="background: #ffaa00;" title="Núcleo Ámbar"></div>
+    <div class="theme-selector" aria-label="Temas">
+      <div class="theme-btn" data-color="cyan" style="background:#00e5ff" title="Cian"></div>
+      <div class="theme-btn" data-color="magenta" style="background:#ff00ff" title="Magenta"></div>
+      <div class="theme-btn" data-color="matrix" style="background:#00ff88" title="Matrix"></div>
+      <div class="theme-btn" data-color="amber" style="background:#ffaa00" title="Ámbar"></div>
     </div>
 
     <div class="hud-datetime">
@@ -33,204 +31,114 @@
     </div>
 
     <div class="topbar-actions">
-      <!-- Botón de Ayuda (Habilidades) -->
-      <button id="btn-help" class="icon-btn" title="Base de Datos de Comandos">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
-      </button>
-
-      <!-- Botón de Configuración de Micrófono -->
-      <button id="btn-mic-settings" class="icon-btn" title="Ajustes de Audio">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-          <line x1="12" y1="19" x2="12" y2="23"></line>
-          <line x1="8" y1="23" x2="16" y2="23"></line>
-        </svg>
-      </button>
-
-      <!-- Control de Volumen de YARI -->
+      <button id="btn-help" class="icon-btn" title="Base de Datos de Comandos">?</button>
+      <button id="btn-mic-settings" class="icon-btn" title="Ajustes de Audio">◉</button>
       <div class="tts-volume-wrapper" title="Volumen de Voz">
-        <div class="tts-volume-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-          </svg>
-        </div>
+        <div class="tts-volume-icon">◖</div>
         <input type="range" id="tts-volume-slider" class="tts-volume-slider" min="0" max="100" value="100">
       </div>
-
-      <!-- Minimizar a Orbe -->
-      <button id="btn-minimize" class="icon-btn" title="Minimizar a Orbe">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
+      <button id="btn-minimize" class="icon-btn" title="Minimizar a Orbe">—</button>
     </div>
   </header>
 
-  <!-- Main Grid -->
   <div class="main-grid">
-    <!-- Sidebar de Diagnósticos y Control -->
     <aside class="panel side-panel">
-      
-      <!-- Sistema -->
-      <div class="card hud-card">
-        <div class="card-header">
-          <h3>SISTEMA / HARDWARE</h3>
-          <span class="hud-code">SYS.01</span>
+      <div class="hud-card telemetry-card">
+        <div class="card-header"><h3>SISTEMA / HARDWARE</h3><span class="hud-code">SYS.01</span></div>
+        <div class="stat-group">
+          <div class="stat-row"><span>CPU</span><b id="cpu-value" class="neon-text">--%</b></div>
+          <div class="meter-bar"><div class="meter-fill" id="cpu-bar" style="width:0%"></div></div>
         </div>
         <div class="stat-group">
-          <div class="stat-row">
-            <span>CPU</span>
-            <b id="cpu-value" class="neon-text">--%</b>
-          </div>
-          <div class="meter-bar"><div class="meter-fill" id="cpu-bar" style="width: 0%"></div></div>
-        </div>
-
-        <div class="stat-group">
-          <div class="stat-row">
-            <span>RAM</span>
-            <b id="ram-value" class="neon-text">--%</b>
-          </div>
-          <div class="meter-bar"><div class="meter-fill" id="ram-bar" style="width: 0%"></div></div>
+          <div class="stat-row"><span>RAM</span><b id="ram-value" class="neon-text">--%</b></div>
+          <div class="meter-bar"><div class="meter-fill" id="ram-bar" style="width:0%"></div></div>
           <div class="stat-row-sub" id="ram-detail">-- / -- GB</div>
         </div>
       </div>
 
-      <!-- Sensor Visual (Cámara en vivo) -->
-      <div class="card hud-card">
-        <div class="card-header">
-          <h3>SENSOR ÓPTICO EN VIVO</h3>
-          <span class="hud-code">CAM.01</span>
-        </div>
+      <div class="hud-card sensor-card">
+        <div class="card-header"><h3>SENSOR ÓPTICO</h3><span class="hud-code">CAM.01</span></div>
         <div class="camera-wrapper">
           <video id="camera-feed" autoplay playsinline muted></video>
+          <div class="camera-grid"></div>
           <div class="camera-scanline"></div>
           <div class="camera-target"></div>
-        </div>
-      </div>
-      
-      <!-- Inyección de Personalidad -->
-      <div class="card hud-card highlight-card">
-        <div class="card-header">
-          <h3>INYECCIÓN DE PROTOCOLOS</h3>
-          <span class="hud-code">SKILL.UP</span>
-        </div>
-        <div class="stat-row-sub" style="margin-bottom: 8px;">Añade habilidades o cambia su actitud temporalmente.</div>
-        <div class="chat-input-row" style="padding: 0; background: transparent; border: none;">
-          <input type="text" id="skill-input" placeholder="Ej: A partir de ahora eres experta en Big Data..." autocomplete="off">
-          <button id="btn-inject" class="send-btn" title="Inyectar a la IA">✚</button>
+          <span class="camera-label">LIVE // VISUAL INPUT</span>
         </div>
       </div>
 
-      <!-- Habilidades y Ejemplos -->
-      <div class="card hud-card">
-        <div class="card-header">
-          <h3>BASE DE DATOS: HABILIDADES</h3>
-          <span class="hud-code">DB.04</span>
-        </div>
-        <div class="skills-container">
-          <div class="skill-item">
-            <strong>👁️ Visión y Análisis</strong>
-            <span>"Describe qué error hay en mi pantalla."</span>
-          </div>
-          <div class="skill-item">
-            <strong>📋 Lector de Portapapeles</strong>
-            <span>"Hazme un resumen de este documento."</span>
-          </div>
-          <div class="skill-item">
-            <strong>🎵 Control Multimedia</strong>
-            <span>"Pon Metallica en Spotify" / "¿Qué opinas de mi música?"</span>
-          </div>
-          <div class="skill-item">
-            <strong>💾 Memoria y Alarmas</strong>
-            <span>"Avísame a las 17:00 que tengo clases."</span>
-          </div>
-          <div class="skill-item">
-            <strong>🎮 Ejecución de Sistemas</strong>
-            <span>"Abre Counter Strike 2." / "Abre el navegador."</span>
-          </div>
-          <div class="skill-item">
-            <strong>⌨️ Control Físico (Anti-Ban)</strong>
-            <span>"Baja la pantalla." / "Escribe 'Hola' y da enter."</span>
-          </div>
+      <div class="hud-card highlight-card">
+        <div class="card-header"><h3>PROTOCOLOS</h3><span class="hud-code">SKILL.UP</span></div>
+        <div class="stat-row-sub protocol-copy">Añade una directriz temporal al núcleo.</div>
+        <div class="compact-input-row">
+          <input type="text" id="skill-input" placeholder="Nueva directriz..." autocomplete="off">
+          <button id="btn-inject" class="send-btn" title="Inyectar">+</button>
         </div>
       </div>
 
-      <!-- Pendientes Activos -->
-      <div class="card hud-card">
-        <div class="card-header">
-          <h3>PENDIENTES ACTIVOS</h3>
+      <div class="hud-card skills-card">
+        <div class="card-header"><h3>CAPACIDADES</h3><span class="hud-code">DB.04</span></div>
+        <div class="skill-grid">
+          <div class="skill-chip"><strong>◉ VISIÓN</strong><span>Análisis de pantalla</span></div>
+          <div class="skill-chip"><strong>▣ MEMORIA</strong><span>Recordatorios</span></div>
+          <div class="skill-chip"><strong>♫ MEDIA</strong><span>Control multimedia</span></div>
+          <div class="skill-chip"><strong>⌘ SISTEMA</strong><span>Ejecución de apps</span></div>
         </div>
-        <div id="reminders-container" class="quick-actions">
-           <!-- Bloques dinámicos -->
-        </div>
+      </div>
+
+      <div class="hud-card reminders-card">
+        <div class="card-header"><h3>PENDIENTES</h3><span class="hud-code">TASK</span></div>
+        <div id="reminders-container" class="quick-actions"></div>
       </div>
     </aside>
 
-    <!-- Panel de Conversación -->
     <main class="panel chat-panel">
       <div class="chat-header">
         <div class="chat-title-group">
-          <h2>CANAL DE COMUNICACIÓN</h2>
+          <div class="channel-mark"></div>
+          <div><h2>CANAL NEURAL</h2><span class="channel-sub">Y.A.R.I // COMUNICACIÓN DIRECTA</span></div>
           <span class="status-indicator-inline">ACTIVO</span>
         </div>
-        <div class="orb-status">
-          <div class="orb-dot" id="orb-indicator"></div>
-          <span id="orb-state-label">En reposo</span>
+        <div class="chat-header-actions">
+          <div class="orb-status"><div class="orb-dot" id="orb-indicator"></div><span id="orb-state-label">En reposo</span></div>
+          <button id="btn-jarvis-view" class="icon-btn eye-btn" title="Mostrar/Ocultar Y.A.R.I" aria-label="Mostrar u ocultar Y.A.R.I">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+          </button>
+          <button id="btn-clear" class="ghost-btn">LIMPIAR</button>
         </div>
-        <button id="btn-clear" class="ghost-btn">LIMPIAR LOG</button>
       </div>
 
-      <div class="chat-messages" id="chat-messages">
-        <div class="msg msg-assistant">
-          <div class="bubble">Sistemas en línea. Interfaz HUD sincronizada con el nuevo motor neuronal.</div>
-          <span class="msg-time">00:00</span>
+      <section id="jarvis-visual" class="jarvis-visual" aria-hidden="true">
+        <div class="visual-head"><span>Y.A.R.I // VISUAL CORE</span><span class="visual-live">● LIVE</span></div>
+        <div class="visual-core">
+          <div class="core-ring ring-a"></div><div class="core-ring ring-b"></div><div class="core-ring ring-c"></div>
+          <div class="core-orb"><div class="core-pupil"></div></div>
         </div>
+        <div class="visual-readout"><span>NEURAL LINK</span><b id="visual-state">STANDBY</b></div>
+      </section>
+
+      <div class="chat-messages" id="chat-messages">
+        <div class="msg msg-assistant"><div class="bubble">Sistemas en línea. Interfaz HUD sincronizada con el núcleo neuronal.</div><span class="msg-time">00:00</span></div>
       </div>
 
       <div class="chat-input-row">
+        <div class="input-prefix">›</div>
         <input type="text" id="chat-input" placeholder="Ingresa un comando o pregunta..." autocomplete="off">
         <button id="btn-send" class="send-btn" title="Transmitir">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M3 11l18-8-8 18-2-8-8-2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          </svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 11l18-8-8 18-2-8-8-2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
         </button>
       </div>
     </main>
   </div>
 </div>
 
-<!-- Modal de Audio (Oculto por defecto) -->
-<div id="audio-modal" class="modal-overlay" style="display: none;">
+<div id="audio-modal" class="modal-overlay" style="display:none">
   <div class="modal-content hud-card">
-    <div class="card-header">
-      <h3>DIAGNÓSTICO DE MICRÓFONO</h3>
-      <button id="close-audio-modal" class="ghost-btn">X</button>
-    </div>
-    
-    <div class="stat-group" style="margin-top: 15px;">
-      <p class="stat-row-sub">Prueba de retorno: Habla y escucha cómo te percibe Y.A.R.I.</p>
-      <button id="btn-test-mic" class="send-btn" style="width: 100%; margin-top: 10px;">
-        🔴 INICIAR PRUEBA (3 SEGUNDOS)
-      </button>
-    </div>
-
-    <div class="stat-group" style="margin-top: 20px;">
-      <div class="stat-row">
-        <span>Filtro de Ruido (Noise Gate)</span>
-        <b class="neon-text">Alta</b>
-      </div>
-      <input type="range" id="noise-gate-slider" class="tts-volume-slider" style="width: 100%; opacity: 1;" min="0" max="100" value="50">
-      <p class="stat-row-sub" style="margin-top: 5px;">Aumenta si hay mucho ruido de fondo (ventiladores, calle).</p>
-    </div>
+    <div class="card-header"><h3>DIAGNÓSTICO DE MICRÓFONO</h3><button id="close-audio-modal" class="ghost-btn">X</button></div>
+    <div class="stat-group modal-section"><p class="stat-row-sub">Prueba de retorno: habla y escucha cómo te percibe Y.A.R.I.</p><button id="btn-test-mic" class="send-btn modal-test">🔴 INICIAR PRUEBA</button></div>
+    <div class="stat-group modal-section"><div class="stat-row"><span>Filtro de Ruido</span><b class="neon-text">Alta</b></div><input type="range" id="noise-gate-slider" class="tts-volume-slider modal-slider" min="0" max="100" value="50"><p class="stat-row-sub">Aumenta si hay mucho ruido de fondo.</p></div>
   </div>
 </div>
-
 <script src="app.js"></script>
 </body>
 </html>
