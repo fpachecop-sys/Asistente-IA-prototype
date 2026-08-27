@@ -39,25 +39,6 @@ updateDateTime();
 // ---------------------------------------------------------
 // Mensajes en el chat
 // ---------------------------------------------------------
-function appendMessage(role, text) {
-  const wrapper = document.createElement("div");
-  wrapper.className = `msg ${role === "user" ? "msg-user" : "msg-assistant"}`;
-
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  bubble.textContent = text;
-
-  const time = document.createElement("span");
-  time.className = "msg-time";
-  time.textContent = new Date().toLocaleTimeString("es-PE", {
-    hour: "2-digit", minute: "2-digit", second: "2-digit"
-  });
-
-  wrapper.appendChild(bubble);
-  wrapper.appendChild(time);
-  chatMessages.appendChild(wrapper);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
 
 function setOrbState(state) {
   // Evitar que la interfaz se actualice si ya está en el estado correcto
@@ -88,17 +69,15 @@ setInterval(async () => {
 async function sendMessage(text) {
   if (!text || !text.trim()) return;
 
-  appendMessage("user", text);
   chatInput.value = "";
   btnSend.disabled = true;
   setOrbState("thinking");
 
   try {
-    const result = await window.pywebview.api.send_text_message(text);
+    await window.pywebview.api.send_text_message(text);
     setOrbState("speaking");
-    appendMessage("assistant", result.spoken_response);
   } catch (err) {
-    appendMessage("assistant", "Fallo en la comunicación con el Core.");
+    appendMessageToChat("assistant", "Fallo en la comunicación con el Core.");
     console.error(err);
   } finally {
     setOrbState("idle");
@@ -117,7 +96,7 @@ document.querySelectorAll(".quick-btn").forEach((btn) => {
 
 btnClear.addEventListener("click", () => {
   chatMessages.innerHTML = "";
-  appendMessage("assistant", "Log de comandos reiniciado.");
+  appendMessageToChat("assistant", "Log de comandos reiniciado.");
 });
 
 // Minimizar
@@ -197,7 +176,7 @@ window.addEventListener("pywebviewready", async () => {
     const history = await window.pywebview.api.get_history();
     if (history && history.length) {
       chatMessages.innerHTML = "";
-      history.forEach((m) => appendMessage(m.role, m.text));
+      history.forEach((m) => appendMessageToChat(m.role, m.text));
     }
   } catch (err) {
     console.error("Error al sincronizar historial:", err);
@@ -229,19 +208,17 @@ async function injectSkill() {
   const rule = skillInput.value.trim();
   if (!rule) return;
   
-  // Enviamos una directriz de sistema disfrazada de orden del usuario
   const command = `DIRECTRIZ DE SISTEMA DE ALTA PRIORIDAD. A partir de ahora debes cumplir esta regla de personalidad/habilidad: ${rule}. Confirma de manera muy breve diciendo "Protocolos de personalidad actualizados."`;
   
   skillInput.value = "";
-  appendMessage("user", `[INYECCIÓN DE PROTOCOLO]: ${rule}`);
+  // NO dibujamos el mensaje de inyección aquí.
   setOrbState("thinking");
 
   try {
-    const result = await window.pywebview.api.send_text_message(command);
+    await window.pywebview.api.send_text_message(command);
     setOrbState("speaking");
-    appendMessage("assistant", result.spoken_response);
   } catch (err) {
-    appendMessage("assistant", "Error al inyectar protocolo.");
+    appendMessageToChat("assistant", "Error al inyectar protocolo.");
   } finally {
     setOrbState("idle");
   }

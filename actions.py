@@ -29,6 +29,20 @@ import asyncio
 import pygetwindow as gw
 import vision_control
 
+def get_user_data(key: str) -> dict:
+    """Lee el archivo JSON en tiempo real para obtener contactos o juegos."""
+    import json
+    import os
+    ruta = os.path.join(os.path.dirname(__file__), "userdata.json")
+    try:
+        if os.path.exists(ruta):
+            with open(ruta, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get(key, {})
+    except Exception as e:
+        print(f"Error leyendo userdata.json: {e}")
+    return {}
+
 SYSTEM = platform.system()  # "Windows", "Linux", "Darwin"
 
 # Intentamos importar pycaw solo si estamos en Windows
@@ -149,27 +163,32 @@ def search_google(query: str):
     return f"Buscando '{query}' en Google."
 
 def send_whatsapp_message(contact_name: str, message: str):
+    """Envía un mensaje de forma segura en segundo plano sin usar macros inestables de teclado."""
+    
+    # Extraemos el número del archivo JSON (como acordamos antes)
+    CONTACTS = get_user_data("contacts")
     number = CONTACTS.get(contact_name.lower())
+    
     if not number:
-        return f"No tengo el número de {contact_name} guardado."
-    try:
-        pywhatkit.sendwhatmsg_instantly(
-            phone_no=number,
-            message=message,
-            wait_time=9,
-            tab_close=True
-        )
-        return f"Enviando mensaje a {contact_name} por WhatsApp."
-    except Exception as e:
-        return f"No pude enviar el mensaje: {e}"
+        return f"No tengo el número de {contact_name} guardado en la libreta."
+    
+    import threading
+    def enviar_en_fondo():
+        import pywhatkit
+        try:
+            # Protocolo 100% web: abre la URL y usa la herramienta interna de la librería
+            pywhatkit.sendwhatmsg_instantly(
+                phone_no=number,
+                message=message,
+                wait_time=15,
+                tab_close=True,
+                close_time=3
+            )
+        except Exception as e:
+            print(f"Error interno en WhatsApp: {e}")
 
-CONTACTS = {
-    "franco": "+51 978 475 665",
-    "jaime": "+51 946 838 982",
-    "mamá": "+51 971 482 726",
-    "fabián": "+51 963 183 479",
-    "primita": "+51 916 799 846"
-}
+    threading.Thread(target=enviar_en_fondo, daemon=True).start()
+    return f"Abriendo canal de comunicación seguro para {contact_name}."
 
 
 # =========================================================
@@ -180,48 +199,91 @@ APP_MAP = {
     "notepad": "notepad" if SYSTEM == "Windows" else "gedit",
     "calculadora": "calc" if SYSTEM == "Windows" else "gnome-calculator",
     "explorador de archivos": "explorer" if SYSTEM == "Windows" else "nautilus",
-    "discord": "discord",
-    "spotify": "spotify",
+    "discord": "discord:", # Protocolo nativo de Windows para abrir la app
+    "chat de steam": "steam://friends/", # Protocolo para abrir la lista de amigos
+    "amigos de steam": "steam://friends/",
     "chrome": "chrome",
-    "navegador": "chrome",
     "brave": "brave",
-    "steam": "steam",
 }
 
 def open_app(app_name: str):
     key = app_name.lower().strip()
+    
     if key == "spotify":
         try:
             os.system("start spotify:")
             return "Abriendo Spotify."
         except Exception as e:
             return f"No pude abrir Spotify: {e}"
+            
     command = APP_MAP.get(key, key)
     try:
         if SYSTEM == "Windows":
-            os.startfile(command)  # type: ignore[attr-defined]
+            # Si el comando es un protocolo web o URI (como steam:// o discord:)
+            if command.endswith(":") or "://" in command:
+                os.system(f"start {command}")
+            else:
+                os.startfile(command) # type: ignore[attr-defined]
         elif SYSTEM == "Darwin":
             subprocess.Popen(["open", "-a", command])
         else:
             subprocess.Popen([command])
         return f"Abriendo {app_name}."
     except Exception as e:
-        return f"No pude abrir {app_name}: {e}"
+        return f"No pude abrir {app_name}. Asegúrate de tenerlo instalado."
 
 def open_steam_game(game_name: str):
     key = game_name.lower().strip()
+    STEAM_GAMES = get_user_data("steam_games")
+    
     appid = STEAM_GAMES.get(key)
     if not appid:
-        return f"No tengo el AppID de '{game_name}' guardado."
-    os.system(f"start steam://rungameid/{appid}")
-    return f"Abriendo {game_name} en Steam."
+        return f"No tengo el AppID de '{game_name}' en mis registros."
+    
+    import webbrowser
+    webbrowser.open(f"steam://rungameid/{appid}")
+    return f"Iniciando {game_name} a través de los servidores de Steam."
 
-STEAM_GAMES = {
-    "counter strike 2": "730",
-    "left 4 dead 2": "550",
-    "tom clancy's ghost recon": "460930"
-}
+def scan_installed_steam_games() -> dict:
+    """Escanea el disco duro en tiempo real para encontrar todos los juegos de Steam instalados."""
+    import os
+    import re
+    import winreg
 
+    games_dict = {}
+    try:
+        # 1. Buscamos la ruta exacta de Steam en el Registro de Windows
+        hkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Valve\Steam")
+        steam_path = winreg.QueryValueEx(hkey, "InstallPath")[0]
+        winreg.CloseKey(hkey)
+    except Exception:
+        # Ruta por defecto si falla el registro
+        steam_path = r"C:\Program Files (x86)\Steam"
+
+    steamapps_path = os.path.join(steam_path, "steamapps")
+    
+    if not os.path.exists(steamapps_path):
+        return games_dict
+
+    # 2. Leemos los archivos 'appmanifest' que contienen la info de cada juego
+    for filename in os.listdir(steamapps_path):
+        if filename.startswith("appmanifest_") and filename.endswith(".acf"):
+            filepath = os.path.join(steamapps_path, filename)
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    # Usamos expresiones regulares para extraer el ID y el Nombre
+                    appid_match = re.search(r'"appid"\s+"(\d+)"', content)
+                    name_match = re.search(r'"name"\s+"([^"]+)"', content, re.IGNORECASE)
+                    
+                    if appid_match and name_match:
+                        appid = appid_match.group(1)
+                        name = name_match.group(1).strip()
+                        games_dict[name] = appid
+            except Exception:
+                continue
+
+    return games_dict
 
 # =========================================================
 #  PROTOCOLO ANTI-BAN (SEGURIDAD EN JUEGOS)
