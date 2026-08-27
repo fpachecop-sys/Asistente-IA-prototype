@@ -287,7 +287,7 @@ def main():
     webview.start()
 
 def _proactive_reminder_loop():
-    """Revisa el reloj cada 20 segundos y habla si hay un pendiente, actualizando SQL."""
+    """Revisa el reloj cada 20 segundos. Si hay un pendiente para AHORA o que YA PASÓ, lo avisa."""
     import time
     import datetime
     
@@ -295,9 +295,17 @@ def _proactive_reminder_loop():
         now_str = datetime.datetime.now().strftime("%H:%M")
         
         for r in app_state.reminders[:]:
-            if r["time"] == now_str:
-                mensaje = f"Interrumpo tus sistemas para recordarte un pendiente: {r['task']}."
+            # NUEVO: Comparamos si la hora programada es IGUAL o MENOR a la actual
+            if r["time"] <= now_str:
+                
+                # Inteligencia extra: ¿Es un recordatorio exacto o uno atrasado?
+                if r["time"] < now_str:
+                    mensaje = f"Señor, mis sistemas estuvieron fuera de línea. Tienes un pendiente atrasado de las {r['time']}: {r['task']}."
+                else:
+                    mensaje = f"Interrumpo tus sistemas para recordarte un pendiente: {r['task']}."
+                    
                 app_state.set_orb_state("speaking")
+                import voice # Aseguramos la importación
                 voice.speak(mensaje)
                 app_state.set_orb_state("idle")
                 

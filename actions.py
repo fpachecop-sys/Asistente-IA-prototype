@@ -396,23 +396,41 @@ def analyze_screen(question: str = "Describe lo que ves en la pantalla"):
     return brain.ask_about_image(img_bytes, question)
 
 def extract_text_from_file(filepath: str) -> str:
-    filepath = os.path.abspath(filepath)
-    if not os.path.exists(filepath):
-        return f"Error: No pude encontrar el archivo en la ruta {filepath}"
-    ext = filepath.split('.')[-1].lower()
+    import os
+    
+    # 1. Intentamos usar la ruta tal cual por si el usuario dio una ruta exacta real
+    ruta_real = os.path.abspath(filepath)
+    
+    # 2. PARCHE INTELIGENTE: Si la ruta no existe, forzamos la búsqueda en el escritorio real
+    if not os.path.exists(ruta_real):
+        filename = os.path.basename(filepath)
+        user_profile = os.environ.get('USERPROFILE', os.path.expanduser("~"))
+        escritorio = os.path.join(user_profile, "Desktop")
+        
+        if not os.path.exists(escritorio):
+            escritorio = os.path.join(user_profile, "OneDrive", "Desktop")
+            
+        ruta_real = os.path.join(escritorio, filename)
+
+    # 3. Verificamos si definitivamente no está
+    if not os.path.exists(ruta_real):
+        return f"Error: No pude encontrar el archivo ni en la ruta dada ni en el escritorio ({ruta_real})."
+        
+    ext = ruta_real.split('.')[-1].lower()
     texto_extraido = ""
     try:
+        import PyPDF2
         if ext in ['txt', 'py', 'js', 'html', 'css', 'md']:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(ruta_real, 'r', encoding='utf-8') as f:
                 texto_extraido = f.read()
         elif ext == 'pdf':
-            with open(filepath, 'rb') as f:
+            with open(ruta_real, 'rb') as f:
                 lector = PyPDF2.PdfReader(f)
                 for pagina in lector.pages:
                     texto_extraido += pagina.extract_text() + "\n"
         elif ext == 'docx':
             import docx
-            doc = docx.Document(filepath)
+            doc = docx.Document(ruta_real)
             for parrafo in doc.paragraphs:
                 texto_extraido += parrafo.text + "\n"
         else:
