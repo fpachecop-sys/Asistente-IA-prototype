@@ -110,6 +110,27 @@ def search_youtube(query: str):
     webbrowser.open(url)
     return f"Buscando '{query}' en YouTube."
 
+def play_on_youtube(query: str) -> str:
+    """Busca el video exacto en YouTube y le da Play automáticamente en segundo plano."""
+    import pywhatkit
+    import threading
+    
+    try:
+        # Creamos una función anidada para ejecutarla como un fantasma
+        def reproducir_en_fondo():
+            try:
+                pywhatkit.playonyt(query)
+            except Exception as e:
+                print(f"Error reproduciendo YouTube en fondo: {e}")
+                
+        # Disparamos el hilo fantasma para que abra el navegador sin congelar a la IA
+        threading.Thread(target=reproducir_en_fondo, daemon=True).start()
+        
+        # Respondemos de inmediato para que la IA no se quede callada
+        return f"Reproduciendo '{query}' en los sistemas de video."
+    except Exception as e:
+        return f"No pude iniciar el protocolo de video: {e}"
+
 def play_on_spotify(song_name: str) -> str:
     """Utiliza la API oficial de Spotify para buscar y reproducir música."""
     import spotify_control
@@ -638,6 +659,7 @@ def execute_intent(intent: dict) -> str:
         "analyze_camera": lambda: analyze_camera(params.get("question", "Describe lo que ves")),
         "run_system_diagnostic": lambda: run_system_diagnostic(),
         "search_web_and_summarize": lambda: search_web_and_summarize(params.get("query", "")),
+        "play_on_youtube": lambda: play_on_youtube(params.get("query", "")),
 
     }
         

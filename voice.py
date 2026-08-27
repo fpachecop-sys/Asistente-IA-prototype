@@ -125,10 +125,10 @@ def transcribe_audio_data(audio_data) -> str:
         texto_test = texto_limpio.lower()
         
         # Palabras prohibidas de YouTube
-        fantasmas = ["amara.org", "suscríbete", "subtítulos", "gracias", "youtube"]
+        fantasmas = ["amara.org", "suscríbete", "subtítulos", "gracias por ver","dale like" ,"visita el canal"]
         
         # Filtro 1: Si dice palabras fantasma o es muy corto
-        if any(f in texto_test for f in fantasmas) or len(texto_limpio) < 4:
+        if any(f in texto_test for f in fantasmas) or len(texto_limpio) < 3:
             return "" 
             
         # Filtro 2: Si es una alucinación repetitiva (ej: "y y y y y")
