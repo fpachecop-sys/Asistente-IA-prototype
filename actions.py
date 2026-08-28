@@ -31,6 +31,7 @@ import asyncio
 import pygetwindow as gw
 import vision_control
 import difflib
+import shutil
 
 def find_file_smart(spoken_filename: str) -> str:
     """Escanea las carpetas principales buscando el archivo que más se parezca al dictado."""
@@ -786,7 +787,91 @@ def search_web_and_summarize(query: str) -> str:
 
     except Exception as e:
         return f"Error en la conexión a la Matrix: {e}"
+        
+
+# =========================================================
+#  NUEVO: GESTIÓN DE ARCHIVOS Y CARPETAS
+# =========================================================
+def manage_files(action: str, target: str, destination: str = "") -> str:
+    """Crea carpetas, elimina o mueve archivos en las rutas principales del usuario."""
+    user_profile = os.environ.get('USERPROFILE', os.path.expanduser("~"))
+    escritorio = os.path.join(user_profile, "Desktop")
+    if not os.path.exists(escritorio):
+        escritorio = os.path.join(user_profile, "OneDrive", "Desktop")
+
+    try:
+        if action == "create_folder":
+            ruta = os.path.join(escritorio, target)
+            os.makedirs(ruta, exist_ok=True)
+            return f"He creado la carpeta '{target}' en tu escritorio."
+            
+        elif action == "delete":
+            ruta = find_file_smart(target)
+            if not ruta:
+                return f"No encontré el archivo '{target}' para eliminar."
+            if os.path.isdir(ruta):
+                shutil.rmtree(ruta)
+            else:
+                os.remove(ruta)
+            return f"El elemento '{os.path.basename(ruta)}' ha sido eliminado de tu sistema."
+            
+        elif action == "move":
+            ruta_origen = find_file_smart(target)
+            if not ruta_origen:
+                return f"No encontré el archivo origen '{target}'."
+            # Busca si la carpeta destino existe, si no, asume que está en el escritorio
+            ruta_destino = os.path.join(escritorio, destination)
+            if not os.path.exists(ruta_destino):
+                os.makedirs(ruta_destino, exist_ok=True)
+                
+            shutil.move(ruta_origen, ruta_destino)
+            return f"He movido '{os.path.basename(ruta_origen)}' a '{destination}'."
+            
+    except Exception as e:
+        return f"Error en la operación de archivos: {e}"
     
+    return "Acción de archivos no reconocida."
+
+
+# =========================================================
+#  NUEVO: CONTROL DE PROCESOS Y VENTANAS
+# =========================================================
+def close_app(app_name: str) -> str:
+    """Busca y asesina un proceso activo por su nombre."""
+    app_name = app_name.lower().strip()
+    cerrados = 0
+    
+    # Mapeo rápido de nombres comunes a sus procesos reales
+    process_map = {
+        "chrome": "chrome.exe", "google chrome": "chrome.exe",
+        "discord": "discord.exe", "spotify": "spotify.exe",
+        "code": "code.exe", "visual studio code": "code.exe", "vs code": "code.exe",
+        "steam": "steam.exe", "bloc de notas": "notepad.exe", "calculadora": "calculator.exe"
+    }
+    
+    target_exe = process_map.get(app_name, f"{app_name}.exe")
+
+    for proc in psutil.process_iter(['name']):
+        try:
+            if proc.info['name'] and proc.info['name'].lower() == target_exe:
+                proc.kill()
+                cerrados += 1
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+            
+    if cerrados > 0:
+        return f"He cerrado todas las instancias de {app_name}."
+    return f"No encontré {app_name} ejecutándose en segundo plano."
+
+def manage_windows(action: str) -> str:
+    """Controla el entorno de ventanas del sistema operativo."""
+    if action == "minimize_all":
+        # Método nativo e infalible de Windows para mostrar escritorio
+        os.system('''powershell -command "(new-object -com shell.application).minimizeall()"''')
+        return "Minimizando todas las ventanas."
+    return "Comando de ventana no soportado."
+
+
 # =========================================================
 #  DESPACHADOR PRINCIPAL DE INTENCIONES
 # =========================================================
@@ -831,7 +916,11 @@ def execute_intent(intent: dict) -> str:
         "search_web_and_summarize": lambda: search_web_and_summarize(params.get("query", "")),
         "play_on_youtube": lambda: play_on_youtube(params.get("query", "")),
         "smart_edit_file": lambda: smart_edit_file(params.get("filepath", ""), params.get("request", "")),
-
+        
+        # NUEVAS HERRAMIENTAS AÑADIDAS
+        "close_app": lambda: close_app(params.get("app_name", "")),
+        "manage_windows": lambda: manage_windows(params.get("action", "")),
+        "manage_files": lambda: manage_files(params.get("action", ""), params.get("target", ""), params.get("destination", "")),
     }
         
     handler = dispatch.get(action)

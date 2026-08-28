@@ -293,22 +293,20 @@ def main():
 
     global _webview_window
 
-    
-
     # Hilo 1: la bolita (Tkinter), oculta hasta que se pida
     threading.Thread(target=start_orb_thread, daemon=True).start()
 
     # Hilo 2: hotkey global en segundo plano
     threading.Thread(target=register_push_to_talk, daemon=True).start()
+    
     # Hilo 3: El vigilante del tiempo (Proactivo)
     threading.Thread(target=_proactive_reminder_loop, daemon=True).start()
 
-    # (Justo debajo de donde inicias tus otros hilos)
-    import threading
+    # Hilo 4: Telemetría de Hardware (Monitoreo pasivo)
     threading.Thread(target=_telemetry_monitor_loop, daemon=True).start()
 
-    import security_agent  # Importamos tu nuevo módulo
-    # Iniciar el Centinela de Seguridad en segundo plano
+    # Hilo 5: Centinela de Seguridad (Descargas)
+    import security_agent 
     threading.Thread(target=security_agent.start_download_sentinel, daemon=True).start()
     
     # Hilo principal: pywebview (dashboard)

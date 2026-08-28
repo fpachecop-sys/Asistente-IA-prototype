@@ -84,6 +84,9 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "open_website": params: {{"url": "<URL completa>"}} (Úsala SIEMPRE que el usuario pida abrir, ver o entrar a CUALQUIER página web o red social como Instagram, Facebook, Netflix, Wikipedia, etc. Debes deducir y generar la URL oficial correctamente, ej: "https://www.instagram.com").
 - "open_app": params: {{"app_name": "<nombre del programa>"}} (Úsala para abrir apps. Si pide ver a sus amigos o el chat de Steam, el parámetro debe ser EXACTAMENTE "chat de steam". Si pide Discord, pon "discord").
 - "smart_edit_file": params: {{"filepath": "<nombre_del_archivo>", "request": "<lo que pidió el usuario, ej: 'mejora este código y agrégale manejo de errores'>"}} (Úsala SIEMPRE que el usuario te pida mejorar, editar, actualizar o agregar funciones a un archivo que ya existe. El sistema se encargará autónomamente de leerlo y reescribirlo, tú solo debes pasarle el nombre y la petición general).
+- "close_app": params: {{"app_name": "<nombre del programa a cerrar>"}} (Úsala SIEMPRE que el usuario pida cerrar, matar o detener una aplicación como Chrome, Discord, Steam, etc.).
+- "manage_windows": params: {{"action": "minimize_all"}} (Úsala EXCLUSIVAMENTE cuando el usuario te pida minimizar todo, mostrar el escritorio o limpiar la pantalla).
+- "manage_files": params: {{"action": "<create_folder | delete | move>", "target": "<nombre de la carpeta a crear, o archivo a mover/borrar>", "destination": "<solo si es move: nombre de la carpeta destino>"}} (Úsala cuando el usuario te pida crear una carpeta, o mover/borrar archivos. El sistema buscará el archivo inteligentemente).
 
 Reglas importantes:
 1. "spoken_response" debe ser la frase exacta que leerá el motor de voz.
