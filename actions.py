@@ -6,7 +6,9 @@ generado por Gemini y ejecuta la acción correspondiente en el sistema
 operativo: abrir webs, buscar en YouTube, controlar volumen, abrir
 programas, multimedia (play/pause), etc.
 """
-
+import config
+from google import genai
+import re
 import os
 import platform
 import subprocess
@@ -77,9 +79,21 @@ def smart_edit_file(filepath: str, user_request: str) -> str:
     
     # 1. Buscamos el archivo inteligentemente (usa la función que creamos antes)
     ruta_real = find_file_smart(filepath)
+    ruta_real = find_file_smart(filepath)
+    
+    # NUEVA LÓGICA: Si no existe, lo creamos forzosamente en el escritorio
     if not ruta_real:
-        return f"Error: No encontré el archivo '{filepath}' para editar."
-        
+        import os
+        user_profile = os.environ.get('USERPROFILE', os.path.expanduser("~"))
+        ruta_real = os.path.join(user_profile, "Desktop", os.path.basename(filepath))
+        # Creamos un archivo vacío para que Gemini tenga algo que "leer" y sobrescribir
+        with open(ruta_real, 'w', encoding='utf-8') as f:
+            f.write("")
+        codigo_actual = ""
+    else:
+        with open(ruta_real, 'r', encoding='utf-8') as f:
+            codigo_actual = f.read()
+
     try:
         # 2. Leemos el contenido actual
         with open(ruta_real, 'r', encoding='utf-8') as f:
