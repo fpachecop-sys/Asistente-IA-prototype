@@ -118,59 +118,60 @@ class JarvisUI(ctk.CTk):
         self.canvas.delete("all")
         w, h = config.UI_WIDTH, config.UI_HEIGHT
         cx, cy = w // 2, h // 2 - 15
-        base_radius = 50
+        base_radius = 55
 
         color_inner, color_outer = STATE_COLORS[self.current_state]
         
-        # Velocidad dinámica según el estado
-        speed = {"idle": 0.03, "listening": 0.15, "thinking": 0.20, "speaking": 0.25}[self.current_state]
+        # 1. Motor Térmico (Velocidad adaptativa)
+        speed = {"idle": 0.02, "listening": 0.12, "thinking": 0.18, "speaking": 0.25}[self.current_state]
         
         self._pulse_phase += speed
-        self._rotation_angle = (self._rotation_angle + (speed * 40)) % 360
+        self._rotation_angle = (self._rotation_angle + (speed * 45)) % 360
         
-        pulse = math.sin(self._pulse_phase) * 6
+        pulse = math.sin(self._pulse_phase) * 4
         radius = base_radius + pulse
 
-        # 1. Anillo exterior punteado (Radar límite)
-        bound_r = radius + 18
-        self.canvas.create_oval(
-            cx - bound_r, cy - bound_r, cx + bound_r, cy + bound_r,
-            outline=color_inner, width=1, dash=(2, 6)
-        )
+        # 2. Retícula de Apuntado (Crosshair estático)
+        self.canvas.create_line(cx - radius - 35, cy, cx + radius + 35, cy, fill=color_inner, dash=(1, 6), width=1)
+        self.canvas.create_line(cx, cy - radius - 35, cx, cy + radius + 35, fill=color_inner, dash=(1, 6), width=1)
 
-        # 2. Anillo medio segmentado (Gira a la inversa)
-        out_r = radius + 5
-        for i in range(6):
-            start_angle = -self._rotation_angle * 1.5 + (i * 60)
-            self.canvas.create_arc(
-                cx - out_r, cy - out_r, cx + out_r, cy + out_r,
-                start=start_angle, extent=30,
-                style="arc", outline=color_inner, width=2
-            )
-
-        # 3. Anillo interior segmentado grueso (Gira en sentido horario)
-        mid_r = radius - 10
-        for i in range(3):
-            start_angle = self._rotation_angle + (i * 120)
-            self.canvas.create_arc(
-                cx - mid_r, cy - mid_r, cx + mid_r, cy + mid_r,
-                start=start_angle, extent=70,
-                style="arc", outline=color_outer, width=4
-            )
-
-        # 4. Núcleo central pulsante
-        core_r = 12 + math.sin(self._pulse_phase * 2.5) * 4
-        self.canvas.create_oval(
-            cx - core_r, cy - core_r, cx + core_r, cy + core_r,
-            fill=color_outer, outline=""
-        )
+        # 3. Anillo Perimetral y Nodos Satelitales
+        outer_r = radius + 25
+        self.canvas.create_oval(cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r, outline=color_inner, width=1, dash=(1, 8))
         
-        # 5. Destello sutil alrededor del núcleo
-        glow_r = core_r + 6
-        self.canvas.create_oval(
-            cx - glow_r, cy - glow_r, cx + glow_r, cy + glow_r,
-            outline=color_outer, width=1, dash=(1, 3)
-        )
+        # Calculamos 4 satélites orbitando el anillo exterior
+        for angle in [0, 90, 180, 270]:
+            rad = math.radians(angle + self._rotation_angle * 0.8)
+            nx = cx + math.cos(rad) * outer_r
+            ny = cy + math.sin(rad) * outer_r
+            self.canvas.create_oval(nx - 2, ny - 2, nx + 2, ny + 2, fill=color_outer, outline="")
 
-        # Refresca a ~30fps
+        # 4. Anillo de Contención (Múltiples arcos finos en contra-rotación)
+        cont_r = radius + 15
+        for i in range(4):
+            start = -self._rotation_angle * 1.2 + (i * 90)
+            self.canvas.create_arc(cx - cont_r, cy - cont_r, cx + cont_r, cy + cont_r,
+                                   start=start, extent=45, style="arc", outline=color_outer, width=1)
+
+        # 5. Anillo de Datos Principal (Asimétrico)
+        data_r = radius + 5
+        self.canvas.create_arc(cx - data_r, cy - data_r, cx + data_r, cy + data_r,
+                               start=self._rotation_angle * 1.5, extent=140, style="arc", outline=color_inner, width=2)
+        self.canvas.create_arc(cx - data_r, cy - data_r, cx + data_r, cy + data_r,
+                               start=self._rotation_angle * 1.5 + 200, extent=40, style="arc", outline=color_outer, width=3)
+
+        # 6. Escáner de Frecuencia Interior (Giro ultra rápido con patrón de bits)
+        scan_r = radius - 5
+        self.canvas.create_arc(cx - scan_r, cy - scan_r, cx + scan_r, cy + scan_r,
+                               start=-self._rotation_angle * 2.5, extent=280, style="arc", outline=color_inner, width=1, dash=(2, 3, 5, 3))
+
+        # 7. Núcleo Cuántico (Respiración central)
+        core_r = 13 + math.sin(self._pulse_phase * 3) * 3
+        self.canvas.create_oval(cx - core_r, cy - core_r, cx + core_r, cy + core_r, fill=color_outer, outline="")
+        
+        # 8. Anillo estabilizador pegado al núcleo
+        self.canvas.create_oval(cx - core_r - 5, cy - core_r - 5, cx + core_r + 5, cy + core_r + 5, 
+                                outline=color_inner, width=2, dash=(4, 4))
+
+        # Mantener los 30 FPS fluidos
         self.after(33, self._animate)

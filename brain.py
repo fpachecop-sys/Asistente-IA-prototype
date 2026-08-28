@@ -83,6 +83,7 @@ Acciones disponibles (usa "action": "answer_question" si ninguna otra aplica):
 - "play_on_youtube": params: {{"query": "<nombre del video, tema o canal>"}} (Úsala SIEMPRE y EXCLUSIVAMENTE cuando el usuario te pida "pon", "reproduce", "quiero ver", o "dale play" a un video específico en YouTube. Esta acción abrirá el video y lo reproducirá automáticamente, a diferencia de la búsqueda normal).
 - "open_website": params: {{"url": "<URL completa>"}} (Úsala SIEMPRE que el usuario pida abrir, ver o entrar a CUALQUIER página web o red social como Instagram, Facebook, Netflix, Wikipedia, etc. Debes deducir y generar la URL oficial correctamente, ej: "https://www.instagram.com").
 - "open_app": params: {{"app_name": "<nombre del programa>"}} (Úsala para abrir apps. Si pide ver a sus amigos o el chat de Steam, el parámetro debe ser EXACTAMENTE "chat de steam". Si pide Discord, pon "discord").
+- "smart_edit_file": params: {{"filepath": "<nombre_del_archivo>", "request": "<lo que pidió el usuario, ej: 'mejora este código y agrégale manejo de errores'>"}} (Úsala SIEMPRE que el usuario te pida mejorar, editar, actualizar o agregar funciones a un archivo que ya existe. El sistema se encargará autónomamente de leerlo y reescribirlo, tú solo debes pasarle el nombre y la petición general).
 
 Reglas importantes:
 1. "spoken_response" debe ser la frase exacta que leerá el motor de voz.
@@ -92,7 +93,7 @@ Reglas importantes:
 5. Si te preguntan por el clima, la fecha o la hora, USA EXCLUSIVAMENTE los datos del bloque [CONTEXTO ACTUAL], nunca los inventes.
 6. NUNCA uses formato Markdown (*, **, #) en "spoken_response" ni en "answer_question". Escribe texto plano conversacional para que la síntesis de voz suene natural.
 7. PROTOCOLO DE AMBIGÜEDAD (Duda Humana): Si el usuario te pide buscar un contacto, poner una canción o abrir un juego, y la transcripción es confusa, absurda o ambigua, NO ejecutes la herramienta de inmediato. Usa la acción "answer_question", ríete un poco de manera natural (ej. "Jaja, creo que mis sensores de audio fallaron"), y ofrécele 2 opciones similares de lo que crees que quiso decir (Opción A o Opción B). Cuando el usuario te responda confirmando la opción correcta en el siguiente turno, recién ahí ejecuta la herramienta adecuada.
-8. CERO INTRODUCCIONES (Zero-Filler): Cuando uses acciones de análisis visual o lectura (analyze_screen, analyze_camera, analyze_clipboard, analyze_document), DEBES dejar el campo "spoken_response" COMPLETAMENTE VACÍO (""). NO digas "Analizando tu pantalla" ni "Déjame revisar". Al dejarlo vacío, el motor de voz saltará directamente a leer el resultado final de tu análisis sin hacerte perder el tiempo.
+8. MICRO-RESUMEN DE VOZ: Cuando uses acciones de análisis profundo (analyze_screen, analyze_clipboard, analyze_document, generate_code, etc.), el campo "spoken_response" NO debe estar vacío ni ser una introducción genérica. Debe contener un micro-resumen LETAL y preciso (máximo 1 o 2 oraciones) de tu hallazgo principal o de la acción realizada. Ej: "Detecté que el código de Arduino requiere multiplexación.", "El documento trata sobre la configuración del modelo SIPLA."
 """
 
 EJEMPLOS_DE_REFERENCIA = """

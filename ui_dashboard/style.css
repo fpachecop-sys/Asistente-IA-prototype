@@ -325,10 +325,17 @@ body {
 .msg-user { align-self: flex-end; align-items: flex-end; }
 
 .bubble {
-  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 18px;
   border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.4;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  
+  /* NUEVO: Obliga al HTML a respetar los "Enters" y espacios del código */
+  white-space: pre-wrap; 
+  word-wrap: break-word;
 }
 .msg-assistant .bubble {
   background: rgba(0, 30, 50, 0.5);

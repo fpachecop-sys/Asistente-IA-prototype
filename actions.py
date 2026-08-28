@@ -28,7 +28,93 @@ import PyPDF2
 import asyncio
 import pygetwindow as gw
 import vision_control
+import difflib
 
+def find_file_smart(spoken_filename: str) -> str:
+    """Escanea las carpetas principales buscando el archivo que más se parezca al dictado."""
+    user_profile = os.environ.get('USERPROFILE', os.path.expanduser("~"))
+    
+    # 1. Definimos las rutas de caza (donde Y.A.R.I. tiene jurisdicción)
+    search_dirs = [
+        os.path.join(user_profile, "Desktop"),
+        os.path.join(user_profile, "OneDrive", "Desktop"),
+        os.path.join(user_profile, "Documents"),
+        os.path.join(user_profile, "Downloads")
+    ]
+    
+    # 2. Verificación directa (por si el usuario lo dictó perfecto)
+    if os.path.exists(spoken_filename):
+        return spoken_filename
+
+    # Extraemos solo el nombre que dictó el usuario, en minúsculas
+    target_name = os.path.basename(spoken_filename).lower()
+    
+    # 3. Mapeo del entorno (Leemos qué archivos existen realmente)
+    available_files = {}
+    for directory in search_dirs:
+        if os.path.exists(directory):
+            try:
+                for f in os.listdir(directory):
+                    available_files[f.lower()] = os.path.join(directory, f)
+            except Exception:
+                continue
+                
+    # 4. Algoritmo Fuzzy: Buscamos el match más cercano (mínimo 60% de similitud)
+    matches = difflib.get_close_matches(target_name, available_files.keys(), n=1, cutoff=0.6)
+    
+    if matches:
+        best_match = matches[0] # Ej: "biblioteca.py"
+        return available_files[best_match] # Devolvemos la ruta real absoluta
+        
+    return "" # No se encontró nada similar
+
+def smart_edit_file(filepath: str, user_request: str) -> str:
+    """Busca un archivo, lo lee, y usa a Gemini para mejorarlo autónomamente."""
+    import os
+    import re
+    from google import genai
+    import config
+    
+    # 1. Buscamos el archivo inteligentemente (usa la función que creamos antes)
+    ruta_real = find_file_smart(filepath)
+    if not ruta_real:
+        return f"Error: No encontré el archivo '{filepath}' para editar."
+        
+    try:
+        # 2. Leemos el contenido actual
+        with open(ruta_real, 'r', encoding='utf-8') as f:
+            codigo_actual = f.read()
+            
+        # 3. Sub-cerebro de Ingeniería: Llamada interna a Gemini
+        client = genai.Client(api_key=config.GEMINI_API_KEY)
+        prompt_experto = (
+            f"Eres un Arquitecto de Software Senior. El usuario necesita esto: '{user_request}'.\n"
+            f"Aquí tienes el código actual:\n\n{codigo_actual}\n\n"
+            f"REGLAS ESTRICTAS:\n"
+            f"1. Aplica principios SOLID, Type Hints y manejo de errores (try/except).\n"
+            f"2. Reescribe y devuelve TODO el archivo completo, no solo fragmentos.\n"
+            f"3. Responde ÚNICAMENTE con el código final dentro de un bloque markdown."
+        )
+        
+        response = client.models.generate_content(
+            model=config.GEMINI_MODEL_NAME,
+            contents=prompt_experto
+        )
+        
+        # 4. Limpiamos la respuesta para extraer solo el código puro
+        nuevo_codigo = response.text or ""
+        nuevo_codigo = re.sub(r"^```[\w]*\n", "", nuevo_codigo, flags=re.IGNORECASE|re.MULTILINE)
+        nuevo_codigo = re.sub(r"```$", "", nuevo_codigo, flags=re.MULTILINE).strip()
+        
+        # 5. Sobrescribimos el archivo físico
+        with open(ruta_real, 'w', encoding='utf-8') as f:
+            f.write(nuevo_codigo)
+            
+        return f"Éxito: El archivo {os.path.basename(ruta_real)} ha sido reescrito y mejorado autónomamente."
+        
+    except Exception as e:
+        return f"Error en la edición inteligente: {e}"
+    
 def get_user_data(key: str) -> dict:
     """Lee el archivo JSON en tiempo real para obtener contactos o juegos."""
     import json
@@ -396,31 +482,20 @@ def analyze_screen(question: str = "Describe lo que ves en la pantalla"):
     return brain.ask_about_image(img_bytes, question)
 
 def extract_text_from_file(filepath: str) -> str:
-    import os
     
-    # 1. Intentamos usar la ruta tal cual por si el usuario dio una ruta exacta real
-    ruta_real = os.path.abspath(filepath)
-    
-    # 2. PARCHE INTELIGENTE: Si la ruta no existe, forzamos la búsqueda en el escritorio real
-    if not os.path.exists(ruta_real):
-        filename = os.path.basename(filepath)
-        user_profile = os.environ.get('USERPROFILE', os.path.expanduser("~"))
-        escritorio = os.path.join(user_profile, "Desktop")
-        
-        if not os.path.exists(escritorio):
-            escritorio = os.path.join(user_profile, "OneDrive", "Desktop")
-            
-        ruta_real = os.path.join(escritorio, filename)
+    # 1. Pasamos el nombre por el escáner inteligente
+    ruta_real = find_file_smart(filepath)
 
-    # 3. Verificamos si definitivamente no está
-    if not os.path.exists(ruta_real):
-        return f"Error: No pude encontrar el archivo ni en la ruta dada ni en el escritorio ({ruta_real})."
+    if not ruta_real:
+        return f"Error de Sistema: No encontré '{filepath}' ni ningún archivo similar en tus carpetas principales."
         
     ext = ruta_real.split('.')[-1].lower()
+    nombre_real = os.path.basename(ruta_real)
     texto_extraido = ""
+    
     try:
         import PyPDF2
-        if ext in ['txt', 'py', 'js', 'html', 'css', 'md']:
+        if ext in ['txt', 'py', 'js', 'html', 'css', 'md', 'json']:
             with open(ruta_real, 'r', encoding='utf-8') as f:
                 texto_extraido = f.read()
         elif ext == 'pdf':
@@ -428,16 +503,17 @@ def extract_text_from_file(filepath: str) -> str:
                 lector = PyPDF2.PdfReader(f)
                 for pagina in lector.pages:
                     texto_extraido += pagina.extract_text() + "\n"
-        elif ext == 'docx':
-            import docx
-            doc = docx.Document(ruta_real)
-            for parrafo in doc.paragraphs:
-                texto_extraido += parrafo.text + "\n"
         else:
-            return f"Error: Formato .{ext} no soportado para lectura directa."
+            return f"El formato de '{nombre_real}' no es compatible con mis ópticas de lectura."
+            
+        # 2. Respuesta contextual (Avisa si corrigió el nombre)
+        if nombre_real.lower() != os.path.basename(filepath).lower():
+            return f"[AUTOCORRECCIÓN APLICADA: Buscaste '{filepath}', pero leí '{nombre_real}']\n\n{texto_extraido}"
+        
         return texto_extraido
+        
     except Exception as e:
-        return f"Error leyendo el archivo: {e}"
+        return f"Error de lectura en archivo: {e}"
 
 def analyze_document(filepath: str, query: str) -> str:
     contenido = extract_text_from_file(filepath)
@@ -740,6 +816,7 @@ def execute_intent(intent: dict) -> str:
         "run_system_diagnostic": lambda: run_system_diagnostic(),
         "search_web_and_summarize": lambda: search_web_and_summarize(params.get("query", "")),
         "play_on_youtube": lambda: play_on_youtube(params.get("query", "")),
+        "smart_edit_file": lambda: smart_edit_file(params.get("filepath", ""), params.get("request", "")),
 
     }
         

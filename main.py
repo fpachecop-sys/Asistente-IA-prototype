@@ -162,25 +162,48 @@ def _process_user_text(user_text: str) -> dict:
         "search_web_and_summarize",
     ]
     
-    # 🛑 CORRECCIÓN: Si es una pregunta normal, NO sumamos las frases
+    # === SEPARACIÓN DE CANALES: VISUAL vs VOZ ===
+    texto_visual = ""
+    texto_hablado = ""
+    
+    # Agrupamos las acciones que devuelven bloques masivos de texto
+    acciones_largas = [
+        "analyze_screen", "analyze_clipboard", "analyze_document", 
+        "analyze_online_pdf", "run_system_diagnostic", 
+        "search_web_and_summarize", "generate_code"
+    ]
+    
     if action_name == "answer_question":
-        spoken_text = action_result_text
-    elif action_name in acciones_de_lectura:
-        spoken_text = f"{short_intro} {action_result_text}"
+        texto_visual = action_result_text
+        texto_hablado = action_result_text
+        
+    elif action_name in acciones_largas:
+        # 1. En pantalla mostramos TODO el resultado técnico
+        texto_visual = action_result_text
+        
+        # 2. PROTOCOLO ANTI-MONÓLOGOS: Si es muy largo, une el micro-resumen y cierra.
+        if len(action_result_text) > 350:
+            texto_hablado = f"{short_intro} He desplegado los detalles técnicos en tu pantalla."
+        else:
+            texto_hablado = f"{short_intro} {action_result_text}"
+            
     else:
-        spoken_text = short_intro or action_result_text
+        # Comandos rápidos (luces, música, alarmas)
+        texto_visual = short_intro or action_result_text
+        texto_hablado = short_intro or action_result_text
 
-    # Limpiamos asteriscos y formato markdown
-    spoken_text = spoken_text.replace("*", "").replace("#", "")
+    # Limpiamos formatos markdown solo para la síntesis de voz
+    texto_hablado = texto_hablado.replace("*", "").replace("#", "")
 
-    app_state.add_message("assistant", spoken_text)
+    app_state.add_message("assistant", texto_visual.strip())
     app_state.set_orb_state("speaking")
     
-    voice.speak(spoken_text)
+    import voice
+    voice.speak(texto_hablado)
     
     app_state.set_orb_state("idle")
 
-    return {"spoken_response": spoken_text}
+    return {"spoken_response": texto_hablado}
 
 
 def _process_audio_thread():
