@@ -59,3 +59,35 @@ def get_full_diagnostic() -> str:
         f"\nTOP 3 PROCESOS MÁS PESADOS:\n{texto_procesos}"
     )
     return diagnostico
+
+# Variables de estado (Anti-Spam de Alertas)
+_alerta_ram_activa = False
+_alerta_cpu_activa = False
+
+def check_telemetry_alerts() -> list:
+    """Monitorea el hardware y devuelve alertas solo si cruzan umbrales críticos."""
+    global _alerta_ram_activa, _alerta_cpu_activa
+    alertas = []
+    
+    # 1. Monitoreo de RAM (Umbral: 85%)
+    ram_percent = psutil.virtual_memory().percent
+    if ram_percent >= 85.0:
+        if not _alerta_ram_activa:
+            alertas.append(f"Atención. La memoria RAM ha superado el {ram_percent} por ciento. Sugiero cerrar procesos pesados.")
+            _alerta_ram_activa = True
+    else:
+        # Si la RAM baja a niveles seguros, "reseteamos" la alerta
+        if ram_percent < 75.0:
+            _alerta_ram_activa = False
+
+    # 2. Monitoreo de CPU (Umbral: 95%)
+    cpu_percent = psutil.cpu_percent(interval=1)
+    if cpu_percent >= 95.0:
+        if not _alerta_cpu_activa:
+            alertas.append("Detecto un consumo crítico de procesador cercano al límite. Posible cuello de botella.")
+            _alerta_cpu_activa = True
+    else:
+        if cpu_percent < 80.0:
+            _alerta_cpu_activa = False
+            
+    return alertas

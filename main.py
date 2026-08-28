@@ -293,6 +293,8 @@ def main():
 
     global _webview_window
 
+    
+
     # Hilo 1: la bolita (Tkinter), oculta hasta que se pida
     threading.Thread(target=start_orb_thread, daemon=True).start()
 
@@ -300,6 +302,14 @@ def main():
     threading.Thread(target=register_push_to_talk, daemon=True).start()
     # Hilo 3: El vigilante del tiempo (Proactivo)
     threading.Thread(target=_proactive_reminder_loop, daemon=True).start()
+
+    # (Justo debajo de donde inicias tus otros hilos)
+    import threading
+    threading.Thread(target=_telemetry_monitor_loop, daemon=True).start()
+
+    import security_agent  # Importamos tu nuevo módulo
+    # Iniciar el Centinela de Seguridad en segundo plano
+    threading.Thread(target=security_agent.start_download_sentinel, daemon=True).start()
     
     # Hilo principal: pywebview (dashboard)
     bridge = Bridge()
@@ -345,6 +355,25 @@ def _proactive_reminder_loop():
                     print(f"Error actualizando SQL: {e}")
                 
         time.sleep(20)
+
+def _telemetry_monitor_loop():
+    """Hilo secundario que funciona como Daemon de Sistema para monitorear hardware."""
+    import time
+    import system_stats
+    import voice
+    
+    while True:
+        try:
+            alertas = system_stats.check_telemetry_alerts()
+            for alerta in alertas:
+                # Interrumpe visual y auditivamente si hay peligro
+                app_state.set_orb_state("speaking")
+                voice.speak(alerta)
+                app_state.set_orb_state("idle")
+        except Exception as e:
+            print(f"Error en telemetría: {e}")
+            
+        time.sleep(15) # Revisa el hardware cada 15 segundos
 
 if __name__ == "__main__":
     main()
